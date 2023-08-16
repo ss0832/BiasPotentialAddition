@@ -72,7 +72,7 @@ def parser():
     parser.add_argument("-fix", "--fix_atoms", nargs="*",  type=str, default="", help='fix atoms (ex.) [atoms (ex.) 1,2,3-6]')
     parser.add_argument("-gi", "--geom_info", nargs="*",  type=str, default="1", help='calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]')
     parser.add_argument("-opt", "--opt_method",  type=str, default="AdaBelief", help='optimization method for QM calclation (default: RFO_mFSB) (mehod_list: RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE, mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS) (ex.) [opt_method]')
-    parser.add_argument("-de", "--max_delta_energy",  type=float, default=0.0, help='forbid more energy shift than set energy (ex.) [energy (kcal/mol)]')
+
     parser.add_argument("-fc", "--calc_exact_hess",  type=int, default=-1, help='calculate exact hessian per steps (ex.) [steps per one hess calculation]')
     args = parser.parse_args()
     return args
@@ -125,23 +125,6 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         else:
             pass 
         self.DELTA = float(args.DELTA) # 
-        #------------------------------
-        if args.max_delta_energy == 0.0:
-            
-            AFIR_force_list = []
-            for i in range(int(len(args.manual_AFIR)/3)):
-                AFIR_force_list.append(float(args.manual_AFIR[3*i]))#kj/mol
-            self.MAX_ENERGY = max(AFIR_force_list) / self.hartree2kjmol / 2.0 #
-            if "RFO_" in args.opt_method:
-                self.MAX_ENERGY = max(AFIR_force_list) / self.hartree2kjmol
-            
-            if self.MAX_ENERGY == 0.0:
-                self.MAX_ENERGY = 40 / self.hartree2kcalmol #
-            
-            
-        else:
-            self.MAX_ENERGY = args.max_delta_energy / self.hartree2kcalmol #
-        #------------------------------ 
         self.N_THREAD = args.N_THREAD #
         self.SET_MEMORY = args.SET_MEMORY #
         self.START_FILE = args.INPUT #
@@ -1199,15 +1182,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             return move_vector
         
 
-        
-        
-        if (e - pre_e > self.MAX_ENERGY or AFIR_e - pre_AFIR_e > 20.0 / self.hartree2kcalmol) and iter > 0:
-            print("energy shift is abnormal.")
-            hess_eigenvalue, _ = np.linalg.eig(self.Model_hess.model_hess)
-            print("NORMAL MODE EIGENVALUE:\n", np.sort(hess_eigenvalue),"\n")
-            move_vector = 0.1*pre_g
-            new_geometry = (pre_geom -  move_vector) * self.bohr2angstroms
-            return new_geometry, move_vector, iter
+
         #---------------------------------
         # group of steepest descent
         if opt_method == "RADAM":
