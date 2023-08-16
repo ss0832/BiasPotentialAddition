@@ -3,6 +3,8 @@ An optimizer for quantum chemical calculation including artificial force induced
 
 This program reproduces AFIR method in python for learning purposes.
 
+About AFIR: https://afir.sci.hokudai.ac.jp/documents/manual/2
+
 ## Features
 
 - It is intended to be used in a linux environment.
