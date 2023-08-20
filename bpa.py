@@ -173,7 +173,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         if len(args.sub_basisset) > 0:
             self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
             for j in range(int(len(args.sub_basisset)/2)):
-                self.SUB_BASIS_SET += "assign "+args.sub_basisset[0]+" "+args.sub_basisset[1]+"\n"
+                self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
             print("Basis Sets defined by User are detected.")
             print(self.SUB_BASIS_SET) #
         #-----------------------------
