@@ -71,8 +71,9 @@ def parser():
     parser.add_argument("-kda", "--keep_dihedral_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3,4'], help='keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] ')
     parser.add_argument("-vpp", "--void_point_pot", nargs="*",  type=str, default=['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"], help='void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] ')
     parser.add_argument("-fix", "--fix_atoms", nargs="*",  type=str, default="", help='fix atoms (ex.) [atoms (ex.) 1,2,3-6]')
+    parser.add_argument("-md", "--md_like_perturbation",  type=str, default="0.0", help='add perturbation like molecule dynamics (ex.) [[temperature (unit. K)]]')
     parser.add_argument("-gi", "--geom_info", nargs="*",  type=str, default="1", help='calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]')
-    parser.add_argument("-opt", "--opt_method",  type=str, default="AdaBelief", help='optimization method for QM calclation (default: RFO_mFSB) (mehod_list: RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE, mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS) (ex.) [opt_method]')
+    parser.add_argument("-opt", "--opt_method", nargs="*", type=str, default=["AdaBelief"], help='optimization method for QM calclation (default: AdaBelief) (mehod_list:(steepest descent method) RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE (quasi-Newton method) mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS, TRM_FSB, TRM_BFGS) (notice you can combine two methods, steepest descent family and quasi-Newton method family. The later method is used if gradient is small enough. [[steepest descent] [quasi-Newton method]]) (ex.) [opt_method]')
     parser.add_argument("-fc", "--calc_exact_hess",  type=int, default=-1, help='calculate exact hessian per steps (ex.) [steps per one hess calculation]')
     args = parser.parse_args()
     return args
@@ -125,32 +126,44 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         self.RMS_FORCE_THRESHOLD = 0.0002 #
         self.MAX_DISPLACEMENT_THRESHOLD = 0.0015 # 
         self.RMS_DISPLACEMENT_THRESHOLD = 0.0010 #
-    
+        self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
+        self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
         
         self.args = args #
         self.FC_COUNT = args.calc_exact_hess # 
         #---------------------------
+        self.temperature = float(args.md_like_perturbation)
+        
+        #---------------------------
+        if len(args.opt_method) > 2:
+            print("invaild input")
+            sys.exit(0)
+        
         if args.DELTA == "x":
-            if args.opt_method == "FSB":
+            if args.opt_method[0] == "FSB":
                 args.DELTA = 0.30
-            elif args.opt_method == "RFO_FSB":
+            elif args.opt_method[0] == "RFO_FSB":
                 args.DELTA = 0.30
-            elif args.opt_method == "BFGS":
+            elif args.opt_method[0] == "BFGS":
                 args.DELTA = 0.30
-            elif args.opt_method == "mBFGS":
+            elif args.opt_method[0] == "mBFGS":
                 args.DELTA = 0.50
-            elif args.opt_method == "mFSB":
+            elif args.opt_method[0] == "mFSB":
                 args.DELTA = 0.50
-            elif args.opt_method == "RFO_mBFGS":
+            elif args.opt_method[0] == "RFO_mBFGS":
                 args.DELTA = 0.30
-            elif args.opt_method == "RFO_mFSB":
+            elif args.opt_method[0] == "RFO_mFSB":
                 args.DELTA = 0.30
-            elif args.opt_method == "RFO_BFGS":
+            elif args.opt_method[0] == "RFO_BFGS":
                 args.DELTA = 0.30
-            elif args.opt_method == "Adabound":
+            elif args.opt_method[0] == "Adabound":
                 args.DELTA = 0.01
-            elif args.opt_method == "AdaMax":
+            elif args.opt_method[0] == "AdaMax":
                 args.DELTA = 0.01
+            elif args.opt_method[0] == "TRM_FSB":
+                args.DELTA = 0.60
+            elif args.opt_method[0] == "TRM_BFGS":
+                args.DELTA = 0.60
             else:
                 args.DELTA = 0.06
         else:
@@ -325,7 +338,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 psi4.oeprop(wfn, 'DIPOLE')
                 psi4.oeprop(wfn, 'MULLIKEN_CHARGES')
                 psi4.oeprop(wfn, 'LOWDIN_CHARGES')
-                psi4.oeprop(wfn, 'WIBERG_LOWDIN_INDICES')
+                #psi4.oeprop(wfn, 'WIBERG_LOWDIN_INDICES')
                 lumo_alpha = wfn.nalpha()
                 lumo_beta = wfn.nbeta()
 
@@ -336,9 +349,9 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                     f.write(",".join(list(map(str,(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE')).tolist()))+[str(np.linalg.norm(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE'),ord=2))])+"\n")
                 with open(self.BPA_FOLDER_DIRECTORY+"MULLIKEN_CHARGES.csv" ,"a") as f:
                     f.write(",".join(list(map(str,wfn.variable('MULLIKEN CHARGES').tolist())))+"\n")           
-                with open(input_file[:-4]+"_WIBERG_LOWDIN_INDICES.csv" ,"a") as f:
-                    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
-                        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
+                #with open(input_file[:-4]+"_WIBERG_LOWDIN_INDICES.csv" ,"a") as f:
+                #    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
+                #        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
                         
                 with open(input_file[:-4]+".log","r") as f:
                     word_list = f.readlines()
@@ -377,9 +390,143 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
 
 
 
-    def calc_move_vector(self, iter, geom_num_list, new_g, opt_method, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):
-        
+    def calc_move_vector(self, iter, geom_num_list, new_g, opt_method_list, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):
+        def update_trust_radii(trust_radii, dE, dE_predicted, displacement):
+            if dE != 0:
+                r =  dE_predicted / dE
+            else:
+                r = 1.0
+            print("dE_predicted/dE : ",r)
+            print("disp. - trust_radii :",abs(np.linalg.norm(displacement, ord=2) - trust_radii))
+            if r < 0.25:
+                return min(np.linalg.norm(displacement, ord=2) / 4, trust_radii / 4)
+            elif r > 0.75 and abs(np.linalg.norm(displacement, ord=2) - trust_radii) < 1e-2:
+                trust_radii *= 2.0
+            else:
+                pass
+                    
+            return np.clip(trust_radii, 0.001, 1.0)
+            
+            
+        def TRM_FSB_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):#this function doesnt work well.
+
+            #-----------------------
+            if iter == 1:
+                self.Model_hess = Model_hess_tmp(self.Model_hess.model_hess, momentum_disp=float(self.DELTA))#momentum_disp is trust_radii.
+            
+            trust_radii = self.Model_hess.momentum_disp
+            
+            aprrox_AFIR_e_shift = abs(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) + 0.5 * np.dot(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), self.Model_hess.model_hess),(geom_num_list - pre_geom).reshape( len(geom_num_list)*3,1)))
+            
+            
+            
+            #----------------------
+            
+            
+            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
+            
+            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
+    
+            delta_hess_SR1 = np.dot(A, A.T) / np.dot(A.T, displacement) 
+            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
+            Bofill_const = np.dot(np.dot(np.dot(A.T, displacement), A.T), displacement) / np.dot(np.dot(np.dot(A.T, A), displacement.T), displacement)
+            delta_hess = np.sqrt(Bofill_const)*delta_hess_SR1 + (1 - np.sqrt(Bofill_const))*delta_hess_BFGS
+            
+            new_hess = self.Model_hess.model_hess + delta_hess
+            
+            #---------------------- dogleg
+            new_g_reshape = new_g.reshape(len(geom_num_list)*3, 1)
+            ipsilon = 1e-8
+            p_u = ((np.dot(new_g_reshape.T, new_g_reshape))/(np.dot(np.dot(new_g_reshape.T, new_hess), new_g_reshape)) + ipsilon)*new_g_reshape
+            p_b = np.dot(np.linalg.inv(new_hess), new_g_reshape)
+            if np.linalg.norm(p_u) >= trust_radii:
+                move_vector = (trust_radii * (new_g_reshape/(np.linalg.norm(new_g_reshape) + ipsilon))).reshape(len(geom_num_list), 3)
+            elif np.linalg.norm(p_b) <= trust_radii:
+                move_vector = p_b.reshape(len(geom_num_list), 3)
+            else:
+                
+                tau = np.sqrt((trust_radii ** 2 - np.linalg.norm(p_u) ** 2)/(np.linalg.norm(p_b - p_u) + ipsilon) ** 2)
+                
+                print(tau)
+                
+                if tau <= 1.0:
+                    move_vector = (tau * p_u).reshape(len(geom_num_list), 3)
+                else:
+                    move_vector = ((2.0 - tau) * p_u + (tau - 1.0) * p_b).reshape(len(geom_num_list), 3)
+                
+            #---------------------
+            
+            move_vector = trust_radii * (move_vector/(np.linalg.norm(move_vector) + ipsilon))
+            
+            trust_radii = update_trust_radii(trust_radii, abs(AFIR_e - pre_AFIR_e), aprrox_AFIR_e_shift, geom_num_list - pre_geom)
+            print("trust_radii: ",trust_radii)
+            self.Model_hess = Model_hess_tmp(new_hess, momentum_disp=trust_radii)#valuable named 'momentum_disp' is trust_radii.
+            return move_vector
+    
+        def TRM_BFGS_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):#this function doesnt work well.
+ 
+            if iter == 1:
+                self.Model_hess = Model_hess_tmp(self.Model_hess.model_hess, momentum_disp=float(self.DELTA))#momentum_disp is trust_radii.
+            
+            trust_radii = self.Model_hess.momentum_disp
+           
+           
+            aprrox_AFIR_e_shift = abs(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) + 0.5 * np.dot(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), self.Model_hess.model_hess),(geom_num_list - pre_geom).reshape( len(geom_num_list)*3,1)))
+            
+           
+            
+            #----------------------
+            
+            
+            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
+            
+
+            #print(Model_hess.model_hess)
+            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
+            #print(A)
+
+            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
+     
+            delta_hess = delta_hess_BFGS
+            
+            
+            
+          
+
+                
+            move_vector = (np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            
+            aprrox_AFIR_e_shift = abs(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) + 0.5 * np.dot(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), self.Model_hess.model_hess),(geom_num_list - pre_geom).reshape(len(geom_num_list)*3,1)))
+            
+            trust_radii = update_trust_radii(trust_radii, abs(AFIR_e - pre_AFIR_e), aprrox_AFIR_e_shift, geom_num_list - pre_geom)
+            new_hess = self.Model_hess.model_hess + delta_hess
+            
+            #---------------------- dogleg
+            new_g_reshape = new_g.reshape(len(geom_num_list)*3, 1)
+            ipsilon = 1e-8
+            p_u = ((np.dot(new_g_reshape.T, new_g_reshape))/(np.dot(np.dot(new_g_reshape.T, new_hess), new_g_reshape)) + ipsilon)*new_g_reshape
+            p_b = np.dot(np.linalg.inv(new_hess), new_g_reshape)
+            if np.linalg.norm(p_u) >= trust_radii:
+                move_vector = (trust_radii*(new_g_reshape/(np.linalg.norm(new_g_reshape) + ipsilon))).reshape(len(geom_num_list), 3)
+            elif np.linalg.norm(p_b) <= trust_radii:
+                move_vector = p_b.reshape(len(geom_num_list), 3)
+            else:
+                tau = np.sqrt((trust_radii ** 2 - np.linalg.norm(p_u) ** 2)/(np.linalg.norm(p_b - p_u) + ipsilon) ** 2)
+                if tau <= 1.0:
+                    move_vector = (tau * p_u).reshape(len(geom_num_list), 3)
+                else:
+                    move_vector = ((2.0 - tau) * p_u + (tau - 1.0) * p_b).reshape(len(geom_num_list), 3)
+                
+            #---------------------
+            trust_radii = update_trust_radii(trust_radii, abs(AFIR_e - pre_AFIR_e), aprrox_AFIR_e_shift, geom_num_list - pre_geom)
+            print("trust_radii: ",trust_radii)
+            self.Model_hess = Model_hess_tmp(new_hess, momentum_disp=trust_radii)#valuable named 'momentum_disp' is trust_radii.
+            return move_vector
+            
         def RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("RFO_BFGS_quasi_newton_method")
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             DELTA_for_QNM = self.DELTA
@@ -428,9 +575,11 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM)
             self.Model_hess = Model_hess_tmp(new_hess)
+            
             return move_vector
             
         def BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("BFGS_quasi_newton_method")
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
@@ -469,6 +618,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         
 
         def RFO_FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("RFO_FSB_quasi_newton_method")
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             DELTA_for_QNM = self.DELTA
@@ -518,6 +668,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             return move_vector
             
         def FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("FSB_quasi_newton_method")
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
@@ -555,13 +706,16 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         
         # arXiv:2307.13744v1
         def momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("momentum_based_BFGS")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
                 momentum_disp = pre_geom
                 momentum_grad = pre_g
             else:
-                momentum_disp = self.Opt_params.adam_m
-                momentum_grad = self.Opt_params.adam_v
+
+                momentum_disp = self.Model_hess.momentum_disp
+                momentum_grad = self.Model_hess.momentum_grad
+                
             beta = 0.50
             
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
@@ -602,18 +756,19 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 return move_vector 
             
             print("step size: ",DELTA_for_QNM,"\n")
-            self.Model_hess = Model_hess_tmp(new_hess)
-            self.Opt_params = Opt_calc_tmps(new_momentum_disp, new_momentum_grad, adam_count)
+            self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
+            
             return move_vector 
         
         def momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("momentum_based_FSB")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
                 momentum_disp = pre_geom
                 momentum_grad = pre_g
             else:
-                momentum_disp = self.Opt_params.adam_m
-                momentum_grad = self.Opt_params.adam_v
+                momentum_disp = self.Model_hess.momentum_disp
+                momentum_grad = self.Model_hess.momentum_grad
             beta = 0.50
             
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
@@ -659,21 +814,19 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 return move_vector 
             
             print("step size: ",DELTA_for_QNM,"\n")
-            self.Model_hess = Model_hess_tmp(new_hess)
-            self.Opt_params = Opt_calc_tmps(new_momentum_disp, new_momentum_grad, adam_count)
+            self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
             return move_vector 
-            
-            
-            
+                
           
         def RFO_momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("RFO_momentum_based_BFGS")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
                 momentum_disp = pre_geom
                 momentum_grad = pre_g
             else:
-                momentum_disp = self.Opt_params.adam_m
-                momentum_grad = self.Opt_params.adam_v
+                momentum_disp = self.Model_hess.momentum_disp
+                momentum_grad = self.Model_hess.momentum_grad
             beta = 0.5
             
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
@@ -722,18 +875,18 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 return move_vector 
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM,"\n")
-            self.Model_hess = Model_hess_tmp(new_hess)
-            self.Opt_params = Opt_calc_tmps(new_momentum_disp, new_momentum_grad, adam_count)
+            self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
             return move_vector 
         
         def RFO_momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+            print("RFO_momentum_based_FSB")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
                 momentum_disp = pre_geom
                 momentum_grad = pre_g
             else:
-                momentum_disp = self.Opt_params.adam_m
-                momentum_grad = self.Opt_params.adam_v
+                momentum_disp = self.Model_hess.momentum_disp
+                momentum_grad = self.Model_hess.momentum_grad
             beta = 0.5
             print("beta :", beta)
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
@@ -787,14 +940,12 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 return move_vector 
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM,"\n")
-            self.Model_hess = Model_hess_tmp(new_hess)
-            self.Opt_params = Opt_calc_tmps(new_momentum_disp, new_momentum_grad, adam_count)
+            self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
             return move_vector 
-            
-  
-            
+                   
         #arXiv:1412.6980v9
         def AdaMax(geom_num_list, new_g):#not worked well
+            print("AdaMax")
             beta_m = 0.9
             beta_v = 0.999
             Epsilon = 1e-08 
@@ -823,7 +974,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             
         #https://cs229.stanford.edu/proj2015/054_report.pdf
         def NAdam(geom_num_list, new_g):
-
+            print("NAdam")
             mu = 0.975
             nu = 0.999
             Epsilon = 1e-08 
@@ -852,6 +1003,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #FIRE
         #Physical Review Letters, Vol. 97, 170201 (2006)
         def FIRE(geom_num_list, new_g):#MD-like optimization method. This method tends to converge local minima.
+            print("FIRE")
             adam_count = self.Opt_params.adam_count
             N_acc = 5
             f_inc = 1.10
@@ -893,6 +1045,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #RAdam
         #arXiv:1908.03265v4
         def RADAM(geom_num_list, new_g):
+            print("RADAM")
             beta_m = 0.9
             beta_v = 0.99
             rho_inf = 2.0 / (1.0- beta_v) - 1.0 
@@ -929,7 +1082,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #AdaBelief
         #ref. arXiv:2010.07468v5
         def AdaBelief(geom_num_list, new_g):
-
+            print("AdaBelief")
             beta_m = 0.9
             beta_v = 0.99
             Epsilon = 1e-08 
@@ -952,6 +1105,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #AdaDiff
         #ref. https://iopscience.iop.org/article/10.1088/1742-6596/2010/1/012027/pdf  Dian Huang et al 2021 J. Phys.: Conf. Ser. 2010 012027
         def AdaDiff(geom_num_list, new_g, pre_g):
+            print("AdaDiff")
             beta_m = 0.9
             beta_v = 0.999
             Epsilon = 1e-08 
@@ -982,6 +1136,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #EVE
         #ref.arXiv:1611.01505v3
         def EVE(geom_num_list, new_g, AFIR_e, pre_AFIR_e, pre_g):
+            print("EVE")
             beta_m = 0.9
             beta_v = 0.999
             beta_d = 0.999
@@ -1023,6 +1178,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #AdamW
         #arXiv:2302.06675v4
         def AdamW(geom_num_list, new_g):
+            print("AdamW")
             beta_m = 0.9
             beta_v = 0.999
             Epsilon = 1e-08
@@ -1054,6 +1210,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #Adam
         #arXiv:1412.6980
         def Adam(geom_num_list, new_g):
+            print("Adam")
             beta_m = 0.9
             beta_v = 0.999
             Epsilon = 1e-08
@@ -1084,6 +1241,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #Adafactor
         #arXiv:1804.04235v1
         def Adafactor(geom_num_list, new_g):
+            print("Adafactor")
             Epsilon_1 = 1e-08
             Epsilon_2 = self.DELTA
 
@@ -1117,6 +1275,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #Prodigy
         #arXiv:2306.06101v1
         def Prodigy(geom_num_list, new_g, initial_geom_num_list):
+            print("Prodigy")
             beta_m = 0.9
             beta_v = 0.999
             Epsilon = 1e-08
@@ -1158,6 +1317,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #AdaBound
         #arXiv:1902.09843v1
         def Adabound(geom_num_list, new_g):
+            print("AdaBound")
             adam_count = self.Opt_params.adam_count
             move_vector = []
             beta_m = 0.9
@@ -1192,6 +1352,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #Adadelta
         #arXiv:1212.5701v1
         def Adadelta(geom_num_list, new_g):#delta is not required. This method tends to converge local minima.
+            print("Adadelta")
             rho = 0.9
             adam_count = self.Opt_params.adam_count
             adam_m = self.Opt_params.adam_m
@@ -1218,83 +1379,175 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             return move_vector
         
 
-        
+        def MD_like_Perturbation(move_vector):#This function is just for fun. Thus, it is no scientific basis.
+            """Langevin equation"""
+            Boltzmann_constant = 3.16681*10**(-6) # hartree/K
+            damping_coefficient = 10.0
+	
+            temperature = self.temperature
+            perturbation = self.DELTA * np.sqrt(2.0 * damping_coefficient * Boltzmann_constant * temperature) * np.random.normal(loc=0.0, scale=1.0, size=3*len(move_vector)).reshape(len(move_vector), 3)
+
+            return perturbation
+
+        move_vector_list = []
      
         #---------------------------------
         # group of steepest descent
-        if opt_method == "RADAM":
-            move_vector = RADAM(geom_num_list, new_g)
-        elif opt_method == "Adam":
-            move_vector = Adam(geom_num_list, new_g)  
-        elif opt_method == "Adadelta":
-            move_vector = Adadelta(geom_num_list, new_g)  
-        elif opt_method == "AdamW":
-            move_vector = AdamW(geom_num_list, new_g)      
-        elif opt_method == "AdaDiff":
-            move_vector = AdaDiff(geom_num_list, new_g, pre_g)
-        elif opt_method == "Adafactor":
-            move_vector = Adafactor(geom_num_list, new_g)
-        elif opt_method == "AdaBelief":
-            move_vector = AdaBelief(geom_num_list, new_g)
-        elif opt_method == "Adabound":
-            move_vector = Adabound(geom_num_list, new_g)
-        elif opt_method == "EVE":
-            move_vector = EVE(geom_num_list, new_g, AFIR_e, pre_AFIR_e, pre_g)
-        elif opt_method == "Prodigy":
-            move_vector = Prodigy(geom_num_list, new_g, pre_geom)#initial_geom_num_list is not assigned.
-        elif opt_method == "AdaMax":
-            move_vector = AdaMax(geom_num_list, new_g)
-        elif opt_method == "NAdam":    
-            move_vector = NAdam(geom_num_list, new_g)
-        elif opt_method == "FIRE":
-            move_vector = FIRE(geom_num_list, new_g)
-        # group of quasi-Newton method
-        elif opt_method == "BFGS":
-            if iter != 0:
-                move_vector = BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+        for opt_method in opt_method_list:
+            if opt_method == "RADAM":
+                tmp_move_vector = RADAM(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "Adam":
+                tmp_move_vector = Adam(geom_num_list, new_g) 
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "Adadelta":
+                tmp_move_vector = Adadelta(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "AdamW":
+                tmp_move_vector = AdamW(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "AdaDiff":
+                tmp_move_vector = AdaDiff(geom_num_list, new_g, pre_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "Adafactor":
+                tmp_move_vector = Adafactor(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "AdaBelief":
+                tmp_move_vector = AdaBelief(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "Adabound":
+                tmp_move_vector = Adabound(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "EVE":
+                tmp_move_vector = EVE(geom_num_list, new_g, AFIR_e, pre_AFIR_e, pre_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "Prodigy":
+                tmp_move_vector = Prodigy(geom_num_list, new_g, pre_geom)#initial_geom_num_list is not assigned.
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "AdaMax":
+                tmp_move_vector = AdaMax(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "NAdam":    
+                tmp_move_vector = NAdam(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            elif opt_method == "FIRE":
+                tmp_move_vector = FIRE(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+                
+            # group of quasi-Newton method
+            
+            elif opt_method == "TRM_FSB":
+                if iter != 0:
+                    tmp_move_vector = TRM_FSB_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                    
+                else:
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
+                    
+            elif opt_method == "TRM_BFGS":
+                if iter != 0:
+                    tmp_move_vector = TRM_BFGS_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                    
+                else:
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
+            
+            elif opt_method == "BFGS":
+                if iter != 0:
+                    tmp_move_vector = BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                    
+                else:
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
+            elif opt_method == "RFO_BFGS":
+                if iter != 0:
+                    tmp_move_vector = RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                    
+                else:
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
+                    
+            elif opt_method == "FSB":
+                if iter != 0:
+                    tmp_move_vector = FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                    
+                else:
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
+                    
+            elif opt_method == "RFO_FSB":
+                if iter != 0:
+                    tmp_move_vector = RFO_FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                else:
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
+            elif opt_method == "mBFGS":
+                if iter != 0:
+                    tmp_move_vector = momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                else:
+                    tmp_move_vector = 0.01*new_g 
+                    move_vector_list.append(tmp_move_vector)
+            elif opt_method == "mFSB":
+                if iter != 0:
+                    tmp_move_vector = momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                else:
+                    tmp_move_vector = 0.01*new_g 
+                    move_vector_list.append(tmp_move_vector)
+            elif opt_method == "RFO_mBFGS":
+                if iter != 0:
+                    tmp_move_vector = RFO_momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                else:
+                    tmp_move_vector = 0.01*new_g 
+                    move_vector_list.append(tmp_move_vector)
+            elif opt_method == "RFO_mFSB":
+                if iter != 0:
+                    tmp_move_vector = RFO_momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    move_vector_list.append(tmp_move_vector)
+                else:
+                    tmp_move_vector = 0.01*new_g 
+                    move_vector_list.append(tmp_move_vector)
             else:
-                move_vector = 0.01*new_g
-        elif opt_method == "RFO_BFGS":
-            if iter != 0:
-                move_vector = RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g  
-        elif opt_method == "FSB":
-            if iter != 0:
-                move_vector = FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g
-        elif opt_method == "RFO_FSB":
-            if iter != 0:
-                move_vector = RFO_FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g  
-        elif opt_method == "mBFGS":
-            if iter != 0:
-                move_vector = momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g 
-        elif opt_method == "mFSB":
-            if iter != 0:
-                move_vector = momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g 
-        elif opt_method == "RFO_mBFGS":
-            if iter != 0:
-                move_vector = RFO_momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g 
-        elif opt_method == "RFO_mFSB":
-            if iter != 0:
-                move_vector = RFO_momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-            else:
-                move_vector = 0.01*new_g 
-        else:
-            print("optimization method that this program is not sppourted is selected... thus, default method is selected.")
-            move_vector = RADAM(geom_num_list, new_g)
+                print("optimization method that this program is not sppourted is selected... thus, default method is selected.")
+                tmp_move_vector = RADAM(geom_num_list, new_g)
         #---------------------------------
         
-        print("step radii: ",np.linalg.norm(move_vector))
+        if len(move_vector_list) > 1:
+            if abs(new_g.max()) < self.MAX_FORCE_SWITCHING_THRESHOLD and abs(np.sqrt(np.square(new_g).mean())) < self.RMS_FORCE_SWITCHING_THRESHOLD:
+                move_vector = copy.copy(move_vector_list[1])
+                print("Chosen method: ", opt_method_list[1])
+            else:
+                move_vector = copy.copy(move_vector_list[0])
+                print("Chosen method: ", opt_method_list[0])
+        else:
+            move_vector = copy.copy(move_vector_list[0])
+        
+        perturbation = MD_like_Perturbation(move_vector)
+        
+        move_vector += perturbation
+        print("perturbation: ", np.linalg.norm(perturbation))
+        
+        print("step radii: ", np.linalg.norm(move_vector))
         
         hess_eigenvalue, _ = np.linalg.eig(self.Model_hess.model_hess)
         
@@ -1904,6 +2157,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 for j in force_data["fix_atoms"]:
                     new_g[j-1] = copy.deepcopy(new_g[j-1]*self.bohr2angstroms*0.0)
             #----------------------------
+            
+            
             new_geometry, move_vector, iter = self.calc_move_vector(iter, geom_num_list, new_g, force_data["opt_method"], pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list)
             
             
@@ -1928,13 +2183,16 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 for j in force_data["fix_atoms"]:
                     new_geometry[j-1] = copy.deepcopy(initial_geom_num_list[j-1]*self.bohr2angstroms)
             #----------------------------
-            geometry_list = self.make_geometry_list_2(new_geometry, element_list, electric_charge_and_multiplicity)
-            file_directory = self.make_psi4_input_file(geometry_list, iter+1)
+            
             pre_AFIR_e = AFIR_e#Hartree
             pre_e = e
             pre_g = new_g#Hartree/Bohr
             pre_geom = geom_num_list#Bohr
             pre_move_vector = move_vector
+            
+            geometry_list = self.make_geometry_list_2(new_geometry, element_list, electric_charge_and_multiplicity)
+            file_directory = self.make_psi4_input_file(geometry_list, iter+1)
+            
         self.sinple_plot(self.NUM_LIST, self.ENERGY_LIST_FOR_PLOTTING, self.AFIR_ENERGY_LIST_FOR_PLOTTING, file_directory)
         self.xyz_file_make()
         #-----------------------
@@ -1970,9 +2228,10 @@ class Opt_calc_tmps:
         self.eve_d_tilde = eve_d_tilde
             
 class Model_hess_tmp:
-    def __init__(self, model_hess):
+    def __init__(self, model_hess, momentum_disp=0, momentum_grad=0):
         self.model_hess = model_hess
-
+        self.momentum_disp = momentum_disp
+        self.momentum_grad = momentum_grad
 
 class CalculationStructInfo:
     def __init__():
