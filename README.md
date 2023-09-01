@@ -200,6 +200,7 @@ With a spring constant of 2.0 a.u. and an equilibrium angle of 60 degrees, apply
 ## TODO
 
 Second derivative of each bias potential is analytically formulated and implemented.
+- (2023/09/01) Some of second derivative of bias potentials is implemented with exceptions of keep angle and keep dihedral angle.
 
 ## Author
 
