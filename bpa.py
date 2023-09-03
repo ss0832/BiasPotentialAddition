@@ -111,286 +111,19 @@ class UnitValueLib:
         self.hartree2kjmol = 2625.500 #
         return
 
-class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
-    def __init__(self, args):
-    
+
+class CalculateMoveVector:
+    def __init__(self, DELTA, Opt_params, Model_hess, FC_COUNT=-1, temperature=0.0):
+        self.Opt_params = Opt_params 
+        self.DELTA = DELTA
+        self.Model_hess = Model_hess
+        self.temperature = temperature
         UVL = UnitValueLib()
         np.set_printoptions(precision=12, floatmode="fixed", suppress=True)
         self.hartree2kcalmol = UVL.hartree2kcalmol #
         self.bohr2angstroms = UVL.bohr2angstroms #
         self.hartree2kjmol = UVL.hartree2kjmol #
- 
-        self.ENERGY_LIST_FOR_PLOTTING = [] #
-        self.AFIR_ENERGY_LIST_FOR_PLOTTING = [] #
-        self.NUM_LIST = [] #
-
-        self.MAX_FORCE_THRESHOLD = 0.0003 #
-        self.RMS_FORCE_THRESHOLD = 0.0002 #
-        self.MAX_DISPLACEMENT_THRESHOLD = 0.0015 # 
-        self.RMS_DISPLACEMENT_THRESHOLD = 0.0010 #
-        self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
-        self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
-        
-        self.args = args #
-        self.FC_COUNT = args.calc_exact_hess # 
-        #---------------------------
-        self.temperature = float(args.md_like_perturbation)
-        
-        #---------------------------
-        if len(args.opt_method) > 2:
-            print("invaild input")
-            sys.exit(0)
-        
-        if args.DELTA == "x":
-            if args.opt_method[0] == "FSB":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "RFO_FSB":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "BFGS":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "mBFGS":
-                args.DELTA = 0.50
-            elif args.opt_method[0] == "mFSB":
-                args.DELTA = 0.50
-            elif args.opt_method[0] == "RFO_mBFGS":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "RFO_mFSB":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "RFO_BFGS":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "Adabound":
-                args.DELTA = 0.01
-            elif args.opt_method[0] == "AdaMax":
-                args.DELTA = 0.01
-            elif args.opt_method[0] == "TRM_FSB":
-                args.DELTA = 0.60
-            elif args.opt_method[0] == "TRM_BFGS":
-                args.DELTA = 0.60
-            else:
-                args.DELTA = 0.06
-        else:
-            pass 
-        self.DELTA = float(args.DELTA) # 
-
-        self.N_THREAD = args.N_THREAD #
-        self.SET_MEMORY = args.SET_MEMORY #
-        self.START_FILE = args.INPUT #
-        self.NSTEP = args.NSTEP #
-        #-----------------------------
-        self.BASIS_SET = args.basisset # 
-        self.FUNCTIONAL = args.functional # 
-        
-        if len(args.sub_basisset) % 2 != 0:
-            print("invaild input")
-            sys.exit(0)
-        
-        self.SUB_BASIS_SET = "" # 
-        if len(args.sub_basisset) > 0:
-            self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
-            for j in range(int(len(args.sub_basisset)/2)):
-                self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
-            print("Basis Sets defined by User are detected.")
-            print(self.SUB_BASIS_SET) #
-        #-----------------------------
-        
-        self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
-        os.makedirs(self.BPA_FOLDER_DIRECTORY, exist_ok=True) #
-        
-        self.Model_hess = None #
-        self.Opt_params = None #
-        
-        return
-        
-    def make_geometry_list(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
-        """Load initial structure"""
-        geometry_list = []
- 
-        with open(self.START_FILE,"r") as f:
-            words = f.readlines()
-            
-        start_data = []
-        for word in words:
-            start_data.append(word.split())
-            
-        electric_charge_and_multiplicity = start_data[0]
-        element_list = []
-            
-
-
-        for i in range(1, len(start_data)):
-            element_list.append(start_data[i][0])
-                
-        geometry_list.append(start_data)
-
-
-        return geometry_list, element_list, electric_charge_and_multiplicity
-
-    def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
-        """load structure updated geometry for next QM calculation"""
-        new_geometry = new_geometry.tolist()
-        
-        geometry_list = []
-
-        new_data = [electric_charge_and_multiplicity]
-        for num, geometry in enumerate(new_geometry):
-           
-            geometry = list(map(str, geometry))
-            geometry = [element_list[num]] + geometry
-            new_data.append(geometry)
-            print(" ".join(geometry))
-            
-        geometry_list.append(new_data)
-        return geometry_list
-
-    def make_psi4_input_file(self, geometry_list, iter):
-        """structure updated geometry is saved."""
-        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
-        try:
-            os.mkdir(file_directory)
-        except:
-            pass
-        for y, geometry in enumerate(geometry_list):
-            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
-                for rows in geometry:
-                    for row in rows:
-                        w.write(str(row))
-                        w.write(" ")
-                    w.write("\n")
-        return file_directory
-
-    def sinple_plot(self, num_list, energy_list, energy_list_2, file_directory):
-        
-        fig = plt.figure()
-
-        ax1 = fig.add_subplot(2, 1, 1)
-        ax2 = fig.add_subplot(2, 1, 2)
-
-        ax1.plot(num_list, energy_list, "g--.")
-        ax2.plot(num_list, energy_list_2, "b--.")
-
-        ax1.set_xlabel('ITR.')
-        ax2.set_xlabel('ITR.')
-
-        ax1.set_ylabel('Gibbs Energy [kcal/mol]')
-        ax2.set_ylabel('Gibbs Energy [kcal/mol]')
-        plt.title('normal_above AFIR_below')
-        plt.tight_layout()
-        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot_sinple_"+str(time.time())+".png", format="png", dpi=300)
-        plt.close()
-        return
-
-    def xyz_file_make(self):
-        """optimized path is saved."""
-        print("\ngeometry collection processing...\n")
-        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
-        #print(file_list,"\n")
-        for m, file in enumerate(file_list):
-            #print(file,m)
-            with open(file,"r") as f:
-                sample = f.readlines()
-                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
-                    atom_num = len(sample)-1
-                    w.write(str(atom_num)+"\n")
-                    w.write("Frame "+str(m)+"\n")
-                del sample[0]
-                for i in sample:
-                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
-                        w2.write(i)
-        print("\ngeometry collection is completed...\n")
-        return
-
-    def psi4_calclation(self, file_directory, element_list, electric_charge_and_multiplicity, iter):
-        """execute QM calclation."""
-        gradient_list = []
-        energy_list = []
-        geometry_num_list = []
-        geometry_optimized_num_list = []
-        finish_frag = False
-        try:
-            os.mkdir(file_directory)
-        except:
-            pass
-        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
-        for num, input_file in enumerate(file_list):
-            try:
-                print("\n",input_file,"\n")
-                if int(electric_charge_and_multiplicity[1]) > 1:
-                    psi4.set_options({'reference': 'uks'})
-                logfile = file_directory+"/"+self.START_FILE[:-4]+'_'+str(num)+'.log'
-                psi4.set_options({"MAXITER": 700})
-                if len(self.SUB_BASIS_SET) > 0:
-                    psi4.basis_helper(self.SUB_BASIS_SET, name='User_Basis_Set', set_option=False)
-                    psi4.set_options({"basis":'User_Basis_Set'})
-                else:
-                    psi4.set_options({"basis":self.BASIS_SET})
-                
-                psi4.set_output_file(logfile)
-                psi4.set_num_threads(nthread=self.N_THREAD)
-                psi4.set_memory(self.SET_MEMORY)
-                
-                psi4.set_options({"cubeprop_tasks": ["esp"],'cubeprop_filepath': file_directory})
-                with open(input_file,"r") as f:
-                    input_data = f.read()
-                    input_data = psi4.geometry(input_data)
-                    input_data_for_display = np.array(input_data.geometry(), dtype = "float64")
-                            
-                g, wfn = psi4.gradient(self.FUNCTIONAL, molecule=input_data, return_wfn=True)
-
-                g = np.array(g, dtype = "float64")
-                psi4.oeprop(wfn, 'DIPOLE')
-                psi4.oeprop(wfn, 'MULLIKEN_CHARGES')
-                psi4.oeprop(wfn, 'LOWDIN_CHARGES')
-                #psi4.oeprop(wfn, 'WIBERG_LOWDIN_INDICES')
-                lumo_alpha = wfn.nalpha()
-                lumo_beta = wfn.nbeta()
-
-                MO_levels =np.array(wfn.epsilon_a_subset("AO","ALL")).tolist()#MO energy levels
-                with open(self.BPA_FOLDER_DIRECTORY+"MO_levels.csv" ,"a") as f:
-                    f.write(",".join(list(map(str,MO_levels))+[str(lumo_alpha),str(lumo_beta)])+"\n")
-                with open(self.BPA_FOLDER_DIRECTORY+"dipole.csv" ,"a") as f:
-                    f.write(",".join(list(map(str,(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE')).tolist()))+[str(np.linalg.norm(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE'),ord=2))])+"\n")
-                with open(self.BPA_FOLDER_DIRECTORY+"MULLIKEN_CHARGES.csv" ,"a") as f:
-                    f.write(",".join(list(map(str,wfn.variable('MULLIKEN CHARGES').tolist())))+"\n")           
-                #with open(input_file[:-4]+"_WIBERG_LOWDIN_INDICES.csv" ,"a") as f:
-                #    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
-                #        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
-                        
-                with open(input_file[:-4]+".log","r") as f:
-                    word_list = f.readlines()
-                    for word in word_list:
-                        if "    Total Energy =             " in word:
-                            word = word.replace("    Total Energy =             ","")
-                            e = (float(word))
-                print("\n")
-
-                
-                if self.FC_COUNT == -1:
-                    pass
-                
-                elif iter % self.FC_COUNT == 0:
-                    
-                    """exact hessian"""
-                    _, wfn = psi4.frequencies(self.FUNCTIONAL, return_wfn=True, ref_gradient=wfn.gradient())
-                    exact_hess = np.array(wfn.hessian())
-                    
-                    freqs = np.array(wfn.frequencies())
-                    
-                    print("frequencies: \n",freqs)
-                    self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
-                
-                
-
-
-            except Exception as error:
-                print(error)
-                print("This molecule could not be optimized.")
-                finish_frag = True
-                return 0, 0, 0, finish_frag 
-                
-            psi4.core.clean() 
-        return e, g, input_data_for_display, finish_frag
-
-
+        self.FC_COUNT = FC_COUNT
 
     def calc_move_vector(self, iter, geom_num_list, new_g, opt_method_list, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):
         def update_trust_radii(trust_radii, dE, dE_predicted, displacement):
@@ -1574,11 +1307,292 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #---------------------------------
         new_geometry = (geom_num_list - move_vector) * self.bohr2angstroms
         
-        self.ENERGY_LIST_FOR_PLOTTING.append(e*self.hartree2kcalmol)
-        self.AFIR_ENERGY_LIST_FOR_PLOTTING.append(AFIR_e*self.hartree2kcalmol)
-        self.NUM_LIST.append(int(iter))
+        return new_geometry, np.array(move_vector, dtype="float64"), iter, self.Opt_params, self.Model_hess
         
-        return new_geometry, np.array(move_vector, dtype="float64"), iter
+
+
+class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
+    def __init__(self, args):
+    
+        UVL = UnitValueLib()
+        np.set_printoptions(precision=12, floatmode="fixed", suppress=True)
+        self.hartree2kcalmol = UVL.hartree2kcalmol #
+        self.bohr2angstroms = UVL.bohr2angstroms #
+        self.hartree2kjmol = UVL.hartree2kjmol #
+ 
+        self.ENERGY_LIST_FOR_PLOTTING = [] #
+        self.AFIR_ENERGY_LIST_FOR_PLOTTING = [] #
+        self.NUM_LIST = [] #
+
+        self.MAX_FORCE_THRESHOLD = 0.0003 #
+        self.RMS_FORCE_THRESHOLD = 0.0002 #
+        self.MAX_DISPLACEMENT_THRESHOLD = 0.0015 # 
+        self.RMS_DISPLACEMENT_THRESHOLD = 0.0010 #
+        self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
+        self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
+        
+        self.args = args #
+        self.FC_COUNT = args.calc_exact_hess # 
+        #---------------------------
+        self.temperature = float(args.md_like_perturbation)
+        
+        #---------------------------
+        if len(args.opt_method) > 2:
+            print("invaild input (-opt)")
+            sys.exit(0)
+        
+        if args.DELTA == "x":
+            if args.opt_method[0] == "FSB":
+                args.DELTA = 0.15
+            elif args.opt_method[0] == "RFO_FSB":
+                args.DELTA = 0.15
+            elif args.opt_method[0] == "BFGS":
+                args.DELTA = 0.15
+            elif args.opt_method[0] == "RFO_BFGS":
+                args.DELTA = 0.15
+                
+            elif args.opt_method[0] == "mBFGS":
+                args.DELTA = 0.50
+            elif args.opt_method[0] == "mFSB":
+                args.DELTA = 0.50
+            elif args.opt_method[0] == "RFO_mBFGS":
+                args.DELTA = 0.30
+            elif args.opt_method[0] == "RFO_mFSB":
+                args.DELTA = 0.30
+
+            elif args.opt_method[0] == "Adabound":
+                args.DELTA = 0.01
+            elif args.opt_method[0] == "AdaMax":
+                args.DELTA = 0.01
+                
+            elif args.opt_method[0] == "TRM_FSB":
+                args.DELTA = 0.60
+            elif args.opt_method[0] == "TRM_BFGS":
+                args.DELTA = 0.60
+            else:
+                args.DELTA = 0.06
+        else:
+            pass 
+        self.DELTA = float(args.DELTA) # 
+
+        self.N_THREAD = args.N_THREAD #
+        self.SET_MEMORY = args.SET_MEMORY #
+        self.START_FILE = args.INPUT #
+        self.NSTEP = args.NSTEP #
+        #-----------------------------
+        self.BASIS_SET = args.basisset # 
+        self.FUNCTIONAL = args.functional # 
+        
+        if len(args.sub_basisset) % 2 != 0:
+            print("invaild input (-sub_bs)")
+            sys.exit(0)
+        
+        self.SUB_BASIS_SET = "" # 
+        if len(args.sub_basisset) > 0:
+            self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
+            for j in range(int(len(args.sub_basisset)/2)):
+                self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
+            print("Basis Sets defined by User are detected.")
+            print(self.SUB_BASIS_SET) #
+        #-----------------------------
+        
+        self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
+        os.makedirs(self.BPA_FOLDER_DIRECTORY, exist_ok=True) #
+        
+        self.Model_hess = None #
+        self.Opt_params = None #
+        
+        return
+        
+    def make_geometry_list(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """Load initial structure"""
+        geometry_list = []
+ 
+        with open(self.START_FILE,"r") as f:
+            words = f.readlines()
+            
+        start_data = []
+        for word in words:
+            start_data.append(word.split())
+            
+        electric_charge_and_multiplicity = start_data[0]
+        element_list = []
+            
+
+
+        for i in range(1, len(start_data)):
+            element_list.append(start_data[i][0])
+                
+        geometry_list.append(start_data)
+
+
+        return geometry_list, element_list, electric_charge_and_multiplicity
+
+    def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """load structure updated geometry for next QM calculation"""
+        new_geometry = new_geometry.tolist()
+        
+        geometry_list = []
+
+        new_data = [electric_charge_and_multiplicity]
+        for num, geometry in enumerate(new_geometry):
+           
+            geometry = list(map(str, geometry))
+            geometry = [element_list[num]] + geometry
+            new_data.append(geometry)
+            print(" ".join(geometry))
+            
+        geometry_list.append(new_data)
+        return geometry_list
+
+    def make_psi4_input_file(self, geometry_list, iter):
+        """structure updated geometry is saved."""
+        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        for y, geometry in enumerate(geometry_list):
+            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
+                for rows in geometry:
+                    for row in rows:
+                        w.write(str(row))
+                        w.write(" ")
+                    w.write("\n")
+        return file_directory
+
+    def sinple_plot(self, num_list, energy_list, energy_list_2, file_directory):
+        
+        fig = plt.figure()
+
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax2 = fig.add_subplot(2, 1, 2)
+
+        ax1.plot(num_list, energy_list, "g--.")
+        ax2.plot(num_list, energy_list_2, "b--.")
+
+        ax1.set_xlabel('ITR.')
+        ax2.set_xlabel('ITR.')
+
+        ax1.set_ylabel('Gibbs Energy [kcal/mol]')
+        ax2.set_ylabel('Gibbs Energy [kcal/mol]')
+        plt.title('normal_above AFIR_below')
+        plt.tight_layout()
+        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot_sinple_"+str(time.time())+".png", format="png", dpi=300)
+        plt.close()
+        return
+
+    def xyz_file_make(self):
+        """optimized path is saved."""
+        print("\ngeometry collection processing...\n")
+        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
+        #print(file_list,"\n")
+        for m, file in enumerate(file_list):
+            #print(file,m)
+            with open(file,"r") as f:
+                sample = f.readlines()
+                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
+                    atom_num = len(sample)-1
+                    w.write(str(atom_num)+"\n")
+                    w.write("Frame "+str(m)+"\n")
+                del sample[0]
+                for i in sample:
+                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
+                        w2.write(i)
+        print("\ngeometry collection is completed...\n")
+        return
+
+    def psi4_calculation(self, file_directory, element_list, electric_charge_and_multiplicity, iter):
+        """execute QM calclation."""
+        gradient_list = []
+        energy_list = []
+        geometry_num_list = []
+        geometry_optimized_num_list = []
+        finish_frag = False
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
+        for num, input_file in enumerate(file_list):
+            try:
+                print("\n",input_file,"\n")
+                if int(electric_charge_and_multiplicity[1]) > 1:
+                    psi4.set_options({'reference': 'uks'})
+                logfile = file_directory+"/"+self.START_FILE[:-4]+'_'+str(num)+'.log'
+                psi4.set_options({"MAXITER": 700})
+                if len(self.SUB_BASIS_SET) > 0:
+                    psi4.basis_helper(self.SUB_BASIS_SET, name='User_Basis_Set', set_option=False)
+                    psi4.set_options({"basis":'User_Basis_Set'})
+                else:
+                    psi4.set_options({"basis":self.BASIS_SET})
+                
+                psi4.set_output_file(logfile)
+                psi4.set_num_threads(nthread=self.N_THREAD)
+                psi4.set_memory(self.SET_MEMORY)
+                
+                psi4.set_options({"cubeprop_tasks": ["esp"],'cubeprop_filepath': file_directory})
+                with open(input_file,"r") as f:
+                    input_data = f.read()
+                    input_data = psi4.geometry(input_data)
+                    input_data_for_display = np.array(input_data.geometry(), dtype = "float64")
+                            
+                g, wfn = psi4.gradient(self.FUNCTIONAL, molecule=input_data, return_wfn=True)
+
+                g = np.array(g, dtype = "float64")
+                psi4.oeprop(wfn, 'DIPOLE')
+                psi4.oeprop(wfn, 'MULLIKEN_CHARGES')
+                psi4.oeprop(wfn, 'LOWDIN_CHARGES')
+                #psi4.oeprop(wfn, 'WIBERG_LOWDIN_INDICES')
+                lumo_alpha = wfn.nalpha()
+                lumo_beta = wfn.nbeta()
+
+                MO_levels =np.array(wfn.epsilon_a_subset("AO","ALL")).tolist()#MO energy levels
+                with open(self.BPA_FOLDER_DIRECTORY+"MO_levels.csv" ,"a") as f:
+                    f.write(",".join(list(map(str,MO_levels))+[str(lumo_alpha),str(lumo_beta)])+"\n")
+                with open(self.BPA_FOLDER_DIRECTORY+"dipole.csv" ,"a") as f:
+                    f.write(",".join(list(map(str,(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE')).tolist()))+[str(np.linalg.norm(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE'),ord=2))])+"\n")
+                with open(self.BPA_FOLDER_DIRECTORY+"MULLIKEN_CHARGES.csv" ,"a") as f:
+                    f.write(",".join(list(map(str,wfn.variable('MULLIKEN CHARGES').tolist())))+"\n")           
+                #with open(input_file[:-4]+"_WIBERG_LOWDIN_INDICES.csv" ,"a") as f:
+                #    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
+                #        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
+                        
+                with open(input_file[:-4]+".log","r") as f:
+                    word_list = f.readlines()
+                    for word in word_list:
+                        if "    Total Energy =             " in word:
+                            word = word.replace("    Total Energy =             ","")
+                            e = (float(word))
+                print("\n")
+
+                
+                if self.FC_COUNT == -1:
+                    pass
+                
+                elif iter % self.FC_COUNT == 0:
+                    
+                    """exact hessian"""
+                    _, wfn = psi4.frequencies(self.FUNCTIONAL, return_wfn=True, ref_gradient=wfn.gradient())
+                    exact_hess = np.array(wfn.hessian())
+                    
+                    freqs = np.array(wfn.frequencies())
+                    
+                    print("frequencies: \n",freqs)
+                    self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
+                
+                
+
+
+            except Exception as error:
+                print(error)
+                print("This molecule could not be optimized.")
+                finish_frag = True
+                return 0, 0, 0, finish_frag 
+                
+            psi4.core.clean() 
+        return e, g, input_data_for_display, finish_frag
+
 
     def calc_biaspot(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter):
         numerical_derivative_delta = 0.0001 #unit:Bohr
@@ -2292,9 +2306,9 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         def calc_void_point_pot_grad(coord, void_point_coord, spring_const, keep_dist, order):
         
             vector = np.linalg.norm((coord - void_point_coord), ord=2)
-            grad_x = spring_const * ( (vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[0] - void_point_coord[0])
-            grad_y = spring_const * ( (vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[1] - void_point_coord[1])
-            grad_z = spring_const * ( (vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[2] - void_point_coord[2])
+            grad_x = spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[0] - void_point_coord[0])
+            grad_y = spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[1] - void_point_coord[1])
+            grad_z = spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[2] - void_point_coord[2])
             grad = np.array([grad_x, grad_y, grad_z], dtype="float64")
             
             return grad #hartree/Bohr
@@ -2336,98 +2350,117 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         #debug_delta_BPA_grad_list = g*0.0
         
         for i in range(len(force_data["repulsive_potential_dist_scale"])):
-            AFIR_e += calc_LJ_Repulsive_pot(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
-            
-            grad = calc_LJ_Repulsive_pot_grad(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
-            BPA_grad_list += grad
-            if self.FC_COUNT == -1:
-                pass
-            elif iter % self.FC_COUNT == 0:
-                BPA_hessian = calc_LJ_Repulsive_pot_hess(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list, BPA_hessian)
-
-        
-        for i in range(len(force_data["keep_pot_spring_const"])):
-            AFIR_e += calc_keep_potential(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
-            
-            grad_1, grad_2 = calc_keep_potential_grad(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
-            
-            BPA_grad_list[force_data["keep_pot_atom_pairs"][i][0]-1] += np.array(grad_1, dtype="float64")
-            BPA_grad_list[force_data["keep_pot_atom_pairs"][i][1]-1] += np.array(grad_2, dtype="float64")
-            if self.FC_COUNT == -1:
-                pass
-            elif iter % self.FC_COUNT == 0:
-                BPA_hessian = calc_keep_potential_hess(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i], force_data["keep_pot_atom_pairs"][i][0], force_data["keep_pot_atom_pairs"][i][1], BPA_hessian)
-        
-        for i in range(len(force_data["anharmonic_keep_pot_spring_const"])):
-            AFIR_e += calc_anharmonic_keep_potential(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
-            
-            
-            grad_1, grad_2 = calc_anharmonic_keep_potential_grad(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
-            
-            BPA_grad_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1] += grad_1
-            BPA_grad_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1] += grad_2
-            
-            if self.FC_COUNT != -1:
-                pass
-            elif iter % self.FC_COUNT == 0:
-                BPA_hessian = calc_anharmonic_keep_potential_hess(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i], force_data["anharmonic_keep_pot_atom_pairs"][i][0], force_data["anharmonic_keep_pot_atom_pairs"][i][1], BPA_hessian)
-        
-        if len(geom_num_list) > 2:
-            for i in range(len(force_data["keep_angle_spring_const"])):
-                AFIR_e += calc_keep_angle(geom_num_list[force_data["keep_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][2]-1], force_data["keep_angle_spring_const"][i], force_data["keep_angle_angle"][i])
+            if force_data["repulsive_potential_well_scale"][i] != 0.0:
+                AFIR_e += calc_LJ_Repulsive_pot(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
                 
-                
-                grad_1, grad_2, grad_3 = calc_keep_angle_grad(geom_num_list[force_data["keep_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][2]-1], force_data["keep_angle_spring_const"][i], force_data["keep_angle_angle"][i])
-                BPA_grad_list[force_data["keep_angle_atom_pairs"][i][0]-1] += grad_1
-                BPA_grad_list[force_data["keep_angle_atom_pairs"][i][1]-1] += grad_2
-                BPA_grad_list[force_data["keep_angle_atom_pairs"][i][2]-1] += grad_3
+                grad = calc_LJ_Repulsive_pot_grad(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
+                BPA_grad_list += grad
                 if self.FC_COUNT == -1:
                     pass
                 elif iter % self.FC_COUNT == 0:
-                    pass 
+                    BPA_hessian = calc_LJ_Repulsive_pot_hess(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list, BPA_hessian)
+            else:
+                pass
+        
+        for i in range(len(force_data["keep_pot_spring_const"])):
+            if force_data["keep_pot_spring_const"][i] != 0.0:
+                AFIR_e += calc_keep_potential(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
+                
+                grad_1, grad_2 = calc_keep_potential_grad(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
+                
+                BPA_grad_list[force_data["keep_pot_atom_pairs"][i][0]-1] += np.array(grad_1, dtype="float64")
+                BPA_grad_list[force_data["keep_pot_atom_pairs"][i][1]-1] += np.array(grad_2, dtype="float64")
+                if self.FC_COUNT == -1:
+                    pass
+                elif iter % self.FC_COUNT == 0:
+                    BPA_hessian = calc_keep_potential_hess(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i], force_data["keep_pot_atom_pairs"][i][0], force_data["keep_pot_atom_pairs"][i][1], BPA_hessian)
+            else:
+                pass
+                
+        for i in range(len(force_data["anharmonic_keep_pot_spring_const"])):
+            if force_data["anharmonic_keep_pot_potential_well_depth"][i] != 0.0:
+                AFIR_e += calc_anharmonic_keep_potential(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
+                
+                
+                grad_1, grad_2 = calc_anharmonic_keep_potential_grad(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
+                
+                BPA_grad_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1] += grad_1
+                BPA_grad_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1] += grad_2
+                
+                if self.FC_COUNT != -1:
+                    pass
+                elif iter % self.FC_COUNT == 0:
+                    BPA_hessian = calc_anharmonic_keep_potential_hess(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i], force_data["anharmonic_keep_pot_atom_pairs"][i][0], force_data["anharmonic_keep_pot_atom_pairs"][i][1], BPA_hessian)
+            else:
+                pass
+            
+            
+        if len(geom_num_list) > 2:
+            for i in range(len(force_data["keep_angle_spring_const"])):
+                if force_data["keep_angle_spring_const"][i] != 0.0:
+                    AFIR_e += calc_keep_angle(geom_num_list[force_data["keep_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][2]-1], force_data["keep_angle_spring_const"][i], force_data["keep_angle_angle"][i])
                     
+                    
+                    grad_1, grad_2, grad_3 = calc_keep_angle_grad(geom_num_list[force_data["keep_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][2]-1], force_data["keep_angle_spring_const"][i], force_data["keep_angle_angle"][i])
+                    BPA_grad_list[force_data["keep_angle_atom_pairs"][i][0]-1] += grad_1
+                    BPA_grad_list[force_data["keep_angle_atom_pairs"][i][1]-1] += grad_2
+                    BPA_grad_list[force_data["keep_angle_atom_pairs"][i][2]-1] += grad_3
+                    if self.FC_COUNT == -1:
+                        pass
+                    elif iter % self.FC_COUNT == 0:
+                        pass 
+                else:
+                    pass
         else:
             pass
         
         
         if len(geom_num_list) > 3:
             for i in range(len(force_data["keep_dihedral_angle_spring_const"])):
-                AFIR_e += calc_keep_dihedral_angle(geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1], force_data["keep_dihedral_angle_spring_const"][i], force_data["keep_dihedral_angle_angle"][i])
-                
-                grad_1, grad_2, grad_3, grad_4 = calc_keep_dihedral_angle_grad(geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1], force_data["keep_dihedral_angle_spring_const"][i], force_data["keep_dihedral_angle_angle"][i])
-                
-                BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1] += grad_1
-                BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1] += grad_2
-                BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1] += grad_3
-                BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1] += grad_4
-                if self.FC_COUNT == -1:
-                    pass
-                elif iter % self.FC_COUNT == 0:
+                if force_data["keep_dihedral_angle_spring_const"][i] != 0.0:
+                    AFIR_e += calc_keep_dihedral_angle(geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1], force_data["keep_dihedral_angle_spring_const"][i], force_data["keep_dihedral_angle_angle"][i])
+                    
+                    grad_1, grad_2, grad_3, grad_4 = calc_keep_dihedral_angle_grad(geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1], force_data["keep_dihedral_angle_spring_const"][i], force_data["keep_dihedral_angle_angle"][i])
+                    
+                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1] += grad_1
+                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1] += grad_2
+                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1] += grad_3
+                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1] += grad_4
+                    if self.FC_COUNT == -1:
+                        pass
+                    elif iter % self.FC_COUNT == 0:
+                        pass
+                else:
                     pass
         else:
             pass
 
         
         for i in range(len(force_data["void_point_pot_spring_const"])):
-            for j in force_data["void_point_pot_atoms"][i]:
-                AFIR_e += calc_void_point_pot(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i])
+            if force_data["void_point_pot_spring_const"][i] != 0.0:
+                for j in force_data["void_point_pot_atoms"][i]:
+                    AFIR_e += calc_void_point_pot(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i])
+                    
+                    grad = calc_void_point_pot_grad(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i])
+                    BPA_grad_list[j-1] += grad
+                    if self.FC_COUNT == -1:
+                        pass
+                    elif iter % self.FC_COUNT == 0:
+                        BPA_hessian = calc_void_point_pot_hess(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i], j, BPA_hessian)
+            else:
+                pass
+        
+        for i in range(len(force_data["AFIR_gamma"])):
+            if force_data["AFIR_gamma"][i] != 0.0:
+                AFIR_e += calc_AFIR_pot(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
                 
-                grad = calc_void_point_pot_grad(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i])
-                BPA_grad_list[j-1] += grad
+                BPA_grad_list += calc_AFIR_grad(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
                 if self.FC_COUNT == -1:
                     pass
                 elif iter % self.FC_COUNT == 0:
-                    BPA_hessian = calc_void_point_pot_hess(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i], j, BPA_hessian)
-        
-        
-        for i in range(len(force_data["AFIR_gamma"])):
-            AFIR_e += calc_AFIR_pot(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
-            
-            BPA_grad_list += calc_AFIR_grad(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
-            if self.FC_COUNT == -1:
+                    BPA_hessian = calc_AFIR_hess(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list, BPA_hessian)
+            else:
                 pass
-            elif iter % self.FC_COUNT == 0:
-                BPA_hessian = calc_AFIR_hess(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list, BPA_hessian)
                 
         new_g = g + BPA_grad_list
 
@@ -2453,7 +2486,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         force_data = {}
        
         if len(args.repulsive_potential) % 4 != 0:
-            print("invaild input")
+            print("invaild input (-rp)")
             sys.exit(0)
         
         force_data["repulsive_potential_well_scale"] = []
@@ -2468,7 +2501,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[4*i+3]))
         
         if len(args.manual_AFIR) % 3 != 0:
-            print("invaild input")
+            print("invaild input (-ma)")
             sys.exit(0)
         
         force_data["AFIR_gamma"] = []
@@ -2484,7 +2517,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         
         
         if len(args.anharmonic_keep_pot) % 4 != 0:
-            print("invaild input")
+            print("invaild input (-akp)")
             sys.exit(0)
         
         force_data["anharmonic_keep_pot_potential_well_depth"] = []
@@ -2499,7 +2532,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             force_data["anharmonic_keep_pot_atom_pairs"].append(num_parse(args.anharmonic_keep_pot[4*i+3]))
         
         if len(args.keep_pot) % 3 != 0:
-            print("invaild input")
+            print("invaild input (-kp)")
             sys.exit(0)
         
         force_data["keep_pot_spring_const"] = []
@@ -2512,7 +2545,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             force_data["keep_pot_atom_pairs"].append(num_parse(args.keep_pot[3*i+2]))
         
         if len(args.keep_angle) % 3 != 0:
-            print("invaild input")
+            print("invaild input (-ka)")
             sys.exit(0)
         
         force_data["keep_angle_spring_const"] = []
@@ -2525,7 +2558,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
             force_data["keep_angle_atom_pairs"].append(num_parse(args.keep_angle[3*i+2]))
         
         if len(args.keep_dihedral_angle) % 3 != 0:
-            print("invaild input")
+            print("invaild input (-kda)")
             sys.exit(0)
             
         force_data["keep_dihedral_angle_spring_const"] = []
@@ -2539,7 +2572,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
         
         
         if len(args.void_point_pot) % 5 != 0:
-            print("invaild input")
+            print("invaild input (-vpp)")
             sys.exit(0)
         
         force_data["void_point_pot_spring_const"] = []
@@ -2610,7 +2643,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                 psi4.core.clean()
                 break
             print("\n# ITR. "+str(iter)+"\n")  
-            e, g, geom_num_list, finish_frag = self.psi4_calclation(file_directory, element_list, 
+            e, g, geom_num_list, finish_frag = self.psi4_calculation(file_directory, element_list, 
             electric_charge_and_multiplicity, iter)
             
             if iter == 0:
@@ -2648,10 +2681,15 @@ class BiasPotentialAddtion:#this class is GOD class, so this code isnt good.
                     new_g[j-1] = copy.deepcopy(new_g[j-1]*self.bohr2angstroms*0.0)
             #----------------------------
             
-            
-            new_geometry, move_vector, iter = self.calc_move_vector(iter, geom_num_list, new_g, force_data["opt_method"], pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list)
-            
-            
+            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, self.FC_COUNT, self.temperature)
+            new_geometry, move_vector, iter, Opt_params, Model_hess = CMV.calc_move_vector(iter, geom_num_list, new_g, force_data["opt_method"], pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list)
+            self.Opt_params = Opt_params
+            self.Model_hess = Model_hess
+
+            self.ENERGY_LIST_FOR_PLOTTING.append(e*self.hartree2kcalmol)
+            self.AFIR_ENERGY_LIST_FOR_PLOTTING.append(AFIR_e*self.hartree2kcalmol)
+            self.NUM_LIST.append(int(iter))
+            #----------------------------
             print("caluculation results (unit a.u.):")
             print("OPT method            : {} ".format(force_data["opt_method"]))
             print("                         Value                         Threshold ")
