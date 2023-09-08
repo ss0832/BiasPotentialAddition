@@ -67,11 +67,14 @@ def parser():
 
     parser.add_argument("-ma", "--manual_AFIR", nargs="*",  type=str, default=['0.0', '1', '2'], help='manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]')
     parser.add_argument("-rp", "--repulsive_potential", nargs="*",  type=str, default=['0.0','1.0', '1', '2'], help='Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]')
+    parser.add_argument("-rpv2", "--repulsive_potential_v2", nargs="*",  type=str, default=['0.0','1.0','0.0','1','2','12','6' '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
     parser.add_argument("-kp", "--keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1,2'], help='keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
     parser.add_argument("-akp", "--anharmonic_keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1.0', '1,2'], help='Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
     parser.add_argument("-ka", "--keep_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3'], help='keep angle 0.5*k*(θ - θ0)^2 (0 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep angle (degrees)] [atom1,atom2,atom3] ...] ')
     parser.add_argument("-kda", "--keep_dihedral_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3,4'], help='keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] ')
     parser.add_argument("-vpp", "--void_point_pot", nargs="*",  type=str, default=['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"], help='void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] ')
+    parser.add_argument("-gp", "--gaussian_pot", nargs="*",  type=str, default=['0.0'], help='Add Gaussian-type bias potential around the initial structure. (ex.) [energy (kJ/mol)]')
+    
     parser.add_argument("-fix", "--fix_atoms", nargs="*",  type=str, default="", help='fix atoms (ex.) [atoms (ex.) 1,2,3-6]')
     parser.add_argument("-md", "--md_like_perturbation",  type=str, default="0.0", help='add perturbation like molecule dynamics (ex.) [[temperature (unit. K)]]')
     parser.add_argument("-gi", "--geom_info", nargs="*",  type=str, default="1", help='calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]')
@@ -1594,7 +1597,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         return e, g, input_data_for_display, finish_frag
 
 
-    def calc_biaspot(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter):
+    def calc_biaspot(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, initial_geom_num_list):
         numerical_derivative_delta = 0.0001 #unit:Bohr
         #g:hartree/Bohr
         #e:hartree
@@ -2344,10 +2347,191 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             
             return hessian
         
+        def calc_gaussian_pot(geom_num_list, gau_pot_energy, initial_geom_num_list):#This function is just for fun. Thus, it is no scientific basis.
+            geom_mean_coord = np.mean(geom_num_list, axis=0)
+            A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
+            energy = A*np.sum(np.exp(-(geom_num_list - initial_geom_num_list - geom_mean_coord) ** 2))
+            
+            return energy
+        
+        def calc_gaussian_pot_grad(geom_num_list, gau_pot_energy, initial_geom_num_list):#This function is just for fun. Thus, it is no scientific basis.
+            A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
+            geom_mean_coord = np.mean(geom_num_list, axis=0)
+            grad = []
+            for i in range(len(geom_num_list)):
+                
+                grad_x = -2.0 * A * (geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) * np.exp(-(geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) ** 2)
+                grad_y = -2.0 * A * (geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) * np.exp(-(geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) ** 2)
+                grad_z = -2.0 * A * (geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) * np.exp(-(geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) ** 2)
+                
+                grad.append(np.array([grad_x, grad_y, grad_z], dtype="float64"))
+            
+            return grad
+            
+        
+                
+        def calc_LJ_Repulsive_pot_v2(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list):  
+            energy = 0.0
+            
+            LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1])) 
+            for i in target:
+                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
+                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
+                
+                vector = np.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
+                energy += UFF_VDW_well_depth * ( abs(const_rep) * ( UFF_VDW_distance / vector ) ** order_rep -1 * abs(const_attr) * ( UFF_VDW_distance / vector ) ** order_attr)
+                
+            return energy
+        
+        def calc_LJ_Repulsive_pot_v2_grad(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list):
+            grad = geom_num_list*0.0
+            
+            LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1]))
+            
+            for i in target:
+                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
+                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
+                
+                vector = np.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
+                grad_x_1 = UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) 
+                grad_y_1 = UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][1] - LJ_pot_center[1])) 
+                grad_z_1 = UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][2] - LJ_pot_center[2])) 
+
+                grad[i-1] += np.array([grad_x_1,grad_y_1,grad_z_1], dtype="float64") #hartree/Bohr
+                grad[center[1]-1-1] += np.array([-1.0 * grad_x_1, -1.0 * grad_y_1, -1.0 * grad_z_1], dtype="float64") #hartree/Bohr
+                
+            return grad
+            
+        def calc_LJ_Repulsive_pot_v2_hess(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list, hessian):
+            
+            LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1]))
+            
+            for i in target:
+                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
+                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
+                
+                vector = np.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
+                
+                hessian_x1x1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) * (geom_num_list[i-1][0] - LJ_pot_center[0]) + UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) 
+                hessian_x1y1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) * (geom_num_list[i-1][1] - LJ_pot_center[1])
+                hessian_x1z1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) * (geom_num_list[i-1][2] - LJ_pot_center[2])
+                hessian_x1x2 = -1 * hessian_x1x1
+                hessian_x1y2 = -1 * hessian_x1y1
+                hessian_x1z2 = -1 * hessian_x1z1
+                
+                hessian_y1x1 = hessian_x1y1
+                hessian_y1y1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][1] - LJ_pot_center[1])) * (geom_num_list[i-1][1] - LJ_pot_center[1]) + UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][1] - LJ_pot_center[1])) 
+                hessian_y1z1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][1] - geom_num_list[j-1][1]) * (geom_num_list[i-1][2] - geom_num_list[j-1][2]) * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)))
+                hessian_y1x2 = -1 * hessian_y1x1
+                hessian_y1y2 = -1 * hessian_y1y1
+                hessian_y1z2 = -1 * hessian_y1z1
+                
+                hessian_z1x1 = hessian_x1z1
+                hessian_z1y1 = hessian_y1z1
+                hessian_z1z1 = 12 * UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][2] - LJ_pot_center[2])) * (geom_num_list[i-1][2] - LJ_pot_center[2]) + UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][2] - LJ_pot_center[2])) 
+                hessian_z1x2 = -1 * hessian_z1x1
+                hessian_z1y2 = -1 * hessian_z1y1
+                hessian_z1z2 = -1 * hessian_z1z1 
+                
+                hessian_x2x1 = hessian_x1x2
+                hessian_x2y1 = hessian_y1x2
+                hessian_x2z1 = hessian_z1x2
+                hessian_x2x2 = -1 * hessian_x2x1
+                hessian_x2y2 = -1 * hessian_x2y1
+                hessian_x2z2 = -1 * hessian_x2z1
+
+                hessian_y2x1 = hessian_x1y2
+                hessian_y2y1 = hessian_y1y2
+                hessian_y2z1 = hessian_z1y2
+                hessian_y2x2 = -1 * hessian_y2x1
+                hessian_y2y2 = -1 * hessian_y2y1
+                hessian_y2z2 = -1 * hessian_y2z1
+                
+                hessian_z2x1 = hessian_x1z2
+                hessian_z2y1 = hessian_y1z2
+                hessian_z2z1 = hessian_z1z2
+                hessian_z2x2 = -1 * hessian_z2x1
+                hessian_z2y2 = -1 * hessian_z2y1
+                hessian_z2z2 = -1 * hessian_z2z1
+
+
+                tmp_hess[3*(i-1)+0][3*(i-1)+0] = copy.copy(hessian_x1x1)
+                tmp_hess[3*(i-1)+0][3*(i-1)+1] = copy.copy(hessian_x1y1)
+                tmp_hess[3*(i-1)+0][3*(i-1)+2] = copy.copy(hessian_x1z1)
+                tmp_hess[3*(i-1)+0][3*(j-1)+0] = copy.copy(hessian_x1x2)
+                tmp_hess[3*(i-1)+0][3*(j-1)+1] = copy.copy(hessian_x1y2)
+                tmp_hess[3*(i-1)+0][3*(j-1)+2] = copy.copy(hessian_x1z2)
+                
+                tmp_hess[3*(i-1)+1][3*(i-1)+0] = copy.copy(hessian_y1x1)
+                tmp_hess[3*(i-1)+1][3*(i-1)+1] = copy.copy(hessian_y1y1)
+                tmp_hess[3*(i-1)+1][3*(i-1)+2] = copy.copy(hessian_y1z1)
+                tmp_hess[3*(i-1)+1][3*(j-1)+0] = copy.copy(hessian_y1x2)
+                tmp_hess[3*(i-1)+1][3*(j-1)+1] = copy.copy(hessian_y1y2)
+                tmp_hess[3*(i-1)+1][3*(j-1)+2] = copy.copy(hessian_y1z2)
+                
+                tmp_hess[3*(i-1)+2][3*(i-1)+0] = copy.copy(hessian_z1x1)
+                tmp_hess[3*(i-1)+2][3*(i-1)+1] = copy.copy(hessian_z1y1)
+                tmp_hess[3*(i-1)+2][3*(i-1)+2] = copy.copy(hessian_z1z1)
+                tmp_hess[3*(i-1)+2][3*(j-1)+0] = copy.copy(hessian_z1x2)
+                tmp_hess[3*(i-1)+2][3*(j-1)+1] = copy.copy(hessian_z1y2)
+                tmp_hess[3*(i-1)+2][3*(j-1)+2] = copy.copy(hessian_z1z2)
+                
+                tmp_hess[3*(j-1)+0][3*(i-1)+0] = copy.copy(hessian_x2x1)
+                tmp_hess[3*(j-1)+0][3*(i-1)+1] = copy.copy(hessian_x2y1)
+                tmp_hess[3*(j-1)+0][3*(i-1)+2] = copy.copy(hessian_x2z1)
+                tmp_hess[3*(j-1)+0][3*(j-1)+0] = copy.copy(hessian_x2x2)
+                tmp_hess[3*(j-1)+0][3*(j-1)+1] = copy.copy(hessian_x2y2)
+                tmp_hess[3*(j-1)+0][3*(j-1)+2] = copy.copy(hessian_x2z2)
+                
+                tmp_hess[3*(j-1)+1][3*(i-1)+0] = copy.copy(hessian_y2x1)
+                tmp_hess[3*(j-1)+1][3*(i-1)+1] = copy.copy(hessian_y2y1)
+                tmp_hess[3*(j-1)+1][3*(i-1)+2] = copy.copy(hessian_y2z1)
+                tmp_hess[3*(j-1)+1][3*(j-1)+0] = copy.copy(hessian_y2x2)
+                tmp_hess[3*(j-1)+1][3*(j-1)+1] = copy.copy(hessian_y2y2)
+                tmp_hess[3*(j-1)+1][3*(j-1)+2] = copy.copy(hessian_y2z2)
+                
+                tmp_hess[3*(j-1)+2][3*(i-1)+0] = copy.copy(hessian_z2x1)
+                tmp_hess[3*(j-1)+2][3*(i-1)+1] = copy.copy(hessian_z2y1)
+                tmp_hess[3*(j-1)+2][3*(i-1)+2] = copy.copy(hessian_z2z1)
+                tmp_hess[3*(j-1)+2][3*(j-1)+0] = copy.copy(hessian_z2x2)
+                tmp_hess[3*(j-1)+2][3*(j-1)+1] = copy.copy(hessian_z2y2)
+                tmp_hess[3*(j-1)+2][3*(j-1)+2] = copy.copy(hessian_z2z2)
+            
+                hessian = hessian + tmp_hess
+            
+            return hessian
+        
+
+        
+            
+        #--------------------------------------------------
         AFIR_e = e
         BPA_grad_list = g*0.0
         BPA_hessian = np.zeros((3*len(g), 3*len(g)))
         #debug_delta_BPA_grad_list = g*0.0
+        
+        
+        for i in range(len(force_data["repulsive_potential_v2_well_scale"])):
+            if force_data["repulsive_potential_v2_well_scale"][i] != 0.0:
+                AFIR_e += calc_LJ_Repulsive_pot_v2(geom_num_list, force_data["repulsive_potential_v2_well_scale"][i], force_data["repulsive_potential_v2_dist_scale"][i], force_data["repulsive_potential_v2_length"][i], force_data["repulsive_potential_v2_const_rep"][i], force_data["repulsive_potential_v2_const_attr"][i], force_data["repulsive_potential_v2_order_rep"][i], force_data["repulsive_potential_v2_order_attr"][i], force_data["repulsive_potential_v2_center"][i], force_data["repulsive_potential_v2_target"][i], element_list)
+                
+                grad = calc_LJ_Repulsive_pot_v2_grad(geom_num_list, force_data["repulsive_potential_v2_well_scale"][i], force_data["repulsive_potential_v2_dist_scale"][i], force_data["repulsive_potential_v2_length"][i], force_data["repulsive_potential_v2_const_rep"][i], force_data["repulsive_potential_v2_const_attr"][i], force_data["repulsive_potential_v2_order_rep"][i], force_data["repulsive_potential_v2_order_attr"][i], force_data["repulsive_potential_v2_center"][i], force_data["repulsive_potential_v2_target"][i], element_list)
+                BPA_grad_list += grad
+                if self.FC_COUNT == -1:
+                    pass
+                elif iter % self.FC_COUNT == 0:
+                    BPA_hessian = calc_LJ_Repulsive_pot_v2_hess(geom_num_list, force_data["repulsive_potential_v2_well_scale"][i], force_data["repulsive_potential_v2_dist_scale"][i], force_data["repulsive_potential_v2_length"][i], force_data["repulsive_potential_v2_const_rep"][i], force_data["repulsive_potential_v2_const_attr"][i], force_data["repulsive_potential_v2_order_rep"][i], force_data["repulsive_potential_v2_order_attr"][i], force_data["repulsive_potential_v2_center"][i], force_data["repulsive_potential_v2_target"][i], element_list, BPA_hessian)
+            else:
+                pass
+        
+        
+        
+        if force_data["gaussian_pot_energy"] != 0.0:
+            AFIR_e += calc_gaussian_pot(geom_num_list, force_data["gaussian_pot_energy"], initial_geom_num_list)
+            BPA_grad_list += calc_gaussian_pot_grad(geom_num_list, force_data["gaussian_pot_energy"], initial_geom_num_list)
+        else:
+            pass
+        
         
         for i in range(len(force_data["repulsive_potential_dist_scale"])):
             if force_data["repulsive_potential_well_scale"][i] != 0.0:
@@ -2500,6 +2684,35 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["repulsive_potential_Fragm_1"].append(num_parse(args.repulsive_potential[4*i+2]))
             force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[4*i+3]))
         
+        """
+        parser.add_argument("-rpv2", "--repulsive_potential_v2", nargs="*",  type=str, default=['0.0','1.0','0.0','1','2','12','6' '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.2) (ex.) [[well_scale] [dist_scale] [length] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+        """
+        if len(args.repulsive_potential_v2) % 9 != 0:
+            print("invaild input (-rpv2)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_v2_well_scale"] = []
+        force_data["repulsive_potential_v2_dist_scale"] = []
+        force_data["repulsive_potential_v2_length"] = []
+        force_data["repulsive_potential_v2_const_rep"] = []
+        force_data["repulsive_potential_v2_const_attr"] = []
+        force_data["repulsive_potential_v2_order_rep"] = []
+        force_data["repulsive_potential_v2_order_attr"] = []
+        force_data["repulsive_potential_v2_center"] = []
+        force_data["repulsive_potential_v2_target"] = []
+        
+        for i in range(int(len(args.repulsive_potential_v2)/9)):
+            force_data["repulsive_potential_v2_well_scale"].append(float(args.repulsive_potential_v2[9*i+0]))
+            force_data["repulsive_potential_v2_dist_scale"].append(float(args.repulsive_potential_v2[9*i+1]))
+            force_data["repulsive_potential_v2_length"].append(float(args.repulsive_potential_v2[9*i+2]))
+            force_data["repulsive_potential_v2_const_rep"].append(float(args.repulsive_potential_v2[9*i+3]))
+            force_data["repulsive_potential_v2_const_attr"].append(float(args.repulsive_potential_v2[9*i+4]))
+            force_data["repulsive_potential_v2_order_rep"].append(float(args.repulsive_potential_v2[9*i+5]))
+            force_data["repulsive_potential_v2_order_attr"].append(float(args.repulsive_potential_v2[9*i+6]))
+            force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[9*i+7]))
+            force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[9*i+8]))
+
+        
         if len(args.manual_AFIR) % 3 != 0:
             print("invaild input (-ma)")
             sys.exit(0)
@@ -2589,6 +2802,13 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["void_point_pot_atoms"].append(num_parse(args.void_point_pot[5*i+3]))
             force_data["void_point_pot_order"].append(float(args.void_point_pot[5*i+4]))
         
+        if len(args.gaussian_pot) > 1:
+            print("invaild input (-gp)")
+            sys.exit(0)
+        
+        for i in range(int(len(args.gaussian_pot))):
+            force_data["gaussian_pot_energy"] = float(args.gaussian_pot[i])
+        
         if len(args.fix_atoms) > 0:
             force_data["fix_atoms"] = num_parse(args.fix_atoms[0])
         else:
@@ -2670,7 +2890,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             if finish_frag:#If QM calculation doesnt end, the process of this program is terminated. 
                 break   
             
-            _, AFIR_e, new_g = self.calc_biaspot(e, g, geom_num_list, element_list, force_data, pre_g, iter)#new_geometry:ang.
+            _, AFIR_e, new_g = self.calc_biaspot(e, g, geom_num_list, element_list, force_data, pre_g, iter, initial_geom_num_list)#new_geometry:ang.
             
             #if iter == 0:
             #    Model_hess = Model_hess_tmp(np.eye(len(element_list*3))+np.dot((new_g.reshape(len(new_g)*3,1)), (new_g.reshape(1,len(new_g)*3))))
