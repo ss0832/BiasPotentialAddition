@@ -24,11 +24,13 @@ About AFIR: https://afir.sci.hokudai.ac.jp/documents/manual/2
 References are given in the source code.
 
 ## Usage
+```
+python bpa.py SN2.xyz -ma 150 1 6
 
-`python bpa.py SN2.xyz -ma 150 1 6`
-
-`python bpa.py aldol_rxn.xyz -ma 95 1 5 50 3 11`
-
+```
+```
+python bpa.py aldol_rxn.xyz -ma 95 1 5 50 3 11
+```
 ## Options
 
 **`-opt`**
@@ -60,7 +62,7 @@ Recommended optimization methods:
 - AdaBelief (fast convergence)
 - AdaDiff (Carefully descend the potential energy surface)
 - FIRE (suitable for finding locally optimal solutions)
-- RFO_mFSB (can use quasi-Newton method)
+- RFO_FSB (can use quasi-Newton method)
 
 
 `-ma`
