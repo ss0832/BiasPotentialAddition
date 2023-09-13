@@ -1477,8 +1477,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         ax1.set_xlabel('ITR.')
         ax2.set_xlabel('ITR.')
 
-        ax1.set_ylabel('Gibbs Energy [kcal/mol]')
-        ax2.set_ylabel('Gibbs Energy [kcal/mol]')
+        ax1.set_ylabel('Electronic Energy [kcal/mol]')
+        ax2.set_ylabel('Electronic Energy [kcal/mol]')
         plt.title('normal_above AFIR_below')
         plt.tight_layout()
         plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot_sinple_"+str(time.time())+".png", format="png", dpi=300)
