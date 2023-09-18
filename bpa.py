@@ -127,7 +127,9 @@ class CalculateMoveVector:
         self.bohr2angstroms = UVL.bohr2angstroms #
         self.hartree2kjmol = UVL.hartree2kjmol #
         self.FC_COUNT = FC_COUNT
-
+        self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
+        self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
+        
     def calc_move_vector(self, iter, geom_num_list, new_g, opt_method_list, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):
         def update_trust_radii(trust_radii, dE, dE_predicted, displacement):
             if dE != 0:
@@ -1331,8 +1333,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         self.RMS_FORCE_THRESHOLD = 0.0002 #
         self.MAX_DISPLACEMENT_THRESHOLD = 0.0015 # 
         self.RMS_DISPLACEMENT_THRESHOLD = 0.0010 #
-        self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
-        self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
+
         
         self.args = args #
         self.FC_COUNT = args.calc_exact_hess # 
