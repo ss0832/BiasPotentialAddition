@@ -12,8 +12,14 @@ import itertools
 
 from scipy.signal import argrelextrema
 
+
 import matplotlib.pyplot as plt
 import numpy as np
+
+try:
+    from tblite.interface import Calculator
+except:
+    print("you can't use extended tight binding method.")
 
 """
     BiasPotentialAddition
@@ -51,6 +57,9 @@ FSB
  J. Chem. Phys. 1999, 111, 10806
 Psi4
  D. G. A. Smith, L. A. Burns, A. C. Simmonett, R. M. Parrish, M. C. Schieber, R. Galvelis, P. Kraus, H. Kruse, R. Di Remigio, A. Alenaizan, A. M. James, S. Lehtola, J. P. Misiewicz, M. Scheurer, R. A. Shaw, J. B. Schriber, Y. Xie, Z. L. Glick, D. A. Sirianni, J. S. O'Brien, J. M. Waldrop, A. Kumar, E. G. Hohenstein, B. P. Pritchard, B. R. Brooks, H. F. Schaefer III, A. Yu. Sokolov, K. Patkowski, A. E. DePrince III, U. Bozkaya, R. A. King, F. A. Evangelista, J. M. Turney, T. D. Crawford, C. D. Sherrill, "Psi4 1.4: Open-Source Software for High-Throughput Quantum Chemistry", J. Chem. Phys. 152(18) 184108 (2020).
+
+GFN2-xTB(tblite)
+J. Chem. Theory Comput. 2019, 15, 3, 1652–1671 
 """
 
 def parser():
@@ -78,8 +87,9 @@ def parser():
     parser.add_argument("-fix", "--fix_atoms", nargs="*",  type=str, default="", help='fix atoms (ex.) [atoms (ex.) 1,2,3-6]')
     parser.add_argument("-md", "--md_like_perturbation",  type=str, default="0.0", help='add perturbation like molecule dynamics (ex.) [[temperature (unit. K)]]')
     parser.add_argument("-gi", "--geom_info", nargs="*",  type=str, default="1", help='calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]')
-    parser.add_argument("-opt", "--opt_method", nargs="*", type=str, default=["AdaBelief"], help='optimization method for QM calclation (default: AdaBelief) (mehod_list:(steepest descent method) RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE (quasi-Newton method) mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS, TRM_FSB, TRM_BFGS) (notice you can combine two methods, steepest descent family and quasi-Newton method family. The later method is used if gradient is small enough. [[steepest descent] [quasi-Newton method]]) (ex.) [opt_method]')
+    parser.add_argument("-opt", "--opt_method", nargs="*", type=str, default=["AdaBelief"], help='optimization method for QM calclation (default: AdaBelief) (mehod_list:(steepest descent method) RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE third_order_momentum_Adam (quasi-Newton method) mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS, TRM_FSB, TRM_BFGS) (notice you can combine two methods, steepest descent family and quasi-Newton method family. The later method is used if gradient is small enough. [[steepest descent] [quasi-Newton method]]) (ex.) [opt_method]')
     parser.add_argument("-fc", "--calc_exact_hess",  type=int, default=-1, help='calculate exact hessian per steps (ex.) [steps per one hess calculation]')
+    parser.add_argument("-xtb", "--usextb",  type=str, default="None", help='use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB ')
     args = parser.parse_args()
     return args
 
@@ -103,7 +113,15 @@ def covalent_radii_lib(element):
             
     return CRL[element] / UnitValueLib().bohr2angstroms#Bohr
 
-
+def element_number(elem):
+    num = {"H": 1, "He": 2,
+        "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10, 
+        "Na": 11, "Mg": 12, "Al": 13, "Si": 14, "P": 15, "S": 16, "Cl": 17, "Ar": 18,
+        "K": 19, "Ca": 20, "Sc": 21, "Ti": 22, "V": 23, "Cr": 24, "Mn": 25, "Fe": 26, "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30, "Ga": 31, "Ge": 32, "As": 33, "Se": 34, "Br": 35, "Kr": 36,
+        "Rb": 37, "Sr": 38, "Y": 39, "Zr": 40, "Nb": 41, "Mo": 42,"Tc": 43,"Ru": 44,"Rh": 45,"Pd": 46,"Ag": 47,"Cd": 48,"In": 49,"Sn": 50,"Sb": 51,"Te": 52,"I": 53,"Xe": 54,
+        "Cs": 55 ,"Ba": 56, "La": 57,"Ce":58,"Pr": 59,"Nd": 60,"Pm": 61,"Sm": 62,"Eu": 63,"Gd": 64,"Tb": 65,"Dy": 66,"Ho": 67,"Er": 68,"Tm": 69,"Yb": 70,"Lu": 71,"Hf": 72,"Ta": 73,"W": 74,"Re": 75,"Os": 76,"Ir": 77,"Pt": 78,"Au": 79,"Hg": 80,"Tl": 81,"Pb":82,"Bi":83,"Po":84,"At":85,"Rn":86}
+        
+    return num[elem]
 
 
 
@@ -260,7 +278,12 @@ class CalculateMoveVector:
             print("trust_radii: ",trust_radii)
             self.Model_hess = Model_hess_tmp(new_hess, momentum_disp=trust_radii)#valuable named 'momentum_disp' is trust_radii.
             return move_vector
-            
+        
+        
+        
+        
+        
+        
         def RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
             print("RFO_BFGS_quasi_newton_method")
             delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
@@ -993,6 +1016,50 @@ class CalculateMoveVector:
                  
             self.Opt_params = Opt_calc_tmps(new_adam_m, new_adam_v, adam_count)
             return move_vector
+            
+        def third_order_momentum_Adam(geom_num_list, new_g):
+            print("third_order_momentum_Adam")
+            #self.Opt_params.eve_d_tilde is 3rd-order momentum
+            beta_m = 0.9
+            beta_v = 0.999
+            beta_s = 0.9999999999
+            
+            Epsilon = 1e-08
+            adam_count = self.Opt_params.adam_count
+            adam_m = self.Opt_params.adam_m
+            adam_v = self.Opt_params.adam_v
+            if adam_count > 1:                
+                adam_s = self.Opt_params.eve_d_tilde
+            else:
+                adam_s = adam_m*0.0
+                
+            new_adam_m = adam_m*0.0
+            new_adam_v = adam_v*0.0
+            new_adam_s = adam_s*0.0
+            new_adam_m_hat = adam_m*0.0
+            new_adam_v_hat = adam_v*0.0
+            new_adam_s_hat = adam_s*0.0
+            for i in range(len(geom_num_list)):
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i])**2)
+                new_adam_s[i] = copy.copy(beta_s*adam_s[i] + (1.0-beta_s)*(new_g[i])**3)
+     
+                        
+            move_vector = []
+            for i in range(len(geom_num_list)):
+                new_adam_m_hat[i] = copy.copy(new_adam_m[i]/(1 - beta_m**adam_count))
+                new_adam_v_hat[i] = copy.copy((new_adam_v[i] + Epsilon)/(1 - beta_v**adam_count))
+                new_adam_s_hat[i] = copy.copy((new_adam_s[i] + Epsilon)/(1 - beta_s**adam_count))
+            
+            
+            for i in range(len(geom_num_list)):
+                 move_vector.append(self.DELTA * new_adam_m_hat[i] / np.abs(np.sqrt(new_adam_v_hat[i]+Epsilon) - ((new_adam_m_hat[i] * (new_adam_s_hat[i]) ** (1 / 3)) / (2.0 * np.sqrt(new_adam_v_hat[i]+Epsilon)) )) )
+                 
+            self.Opt_params = Opt_calc_tmps(new_adam_m, new_adam_v, adam_count, new_adam_s)
+            return move_vector
+            
+
+            
         #Adafactor
         #arXiv:1804.04235v1
         def Adafactor(geom_num_list, new_g):
@@ -1134,7 +1201,7 @@ class CalculateMoveVector:
             return move_vector
         
 
-        def MD_like_Perturbation(move_vector):#This function is just for fun. Thus, it is no scientific basis.
+        def Perturbation(move_vector):#This function is just for fun. Thus, it is no scientific basis.
             """Langevin equation"""
             Boltzmann_constant = 3.16681*10**(-6) # hartree/K
             damping_coefficient = 10.0
@@ -1201,7 +1268,13 @@ class CalculateMoveVector:
             elif opt_method == "FIRE":
                 tmp_move_vector = FIRE(geom_num_list, new_g)
                 move_vector_list.append(tmp_move_vector)
-                
+            
+            elif opt_method == "third_order_momentum_Adam":
+                tmp_move_vector = third_order_momentum_Adam(geom_num_list, new_g)
+                move_vector_list.append(tmp_move_vector)
+
+            
+            
             # group of quasi-Newton method
             
             elif opt_method == "TRM_FSB":
@@ -1298,7 +1371,7 @@ class CalculateMoveVector:
         else:
             move_vector = copy.copy(move_vector_list[0])
         
-        perturbation = MD_like_Perturbation(move_vector)
+        perturbation = Perturbation(move_vector)
         
         move_vector += perturbation
         print("perturbation: ", np.linalg.norm(perturbation))
@@ -1399,8 +1472,11 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             print("Basis Sets defined by User are detected.")
             print(self.SUB_BASIS_SET) #
         #-----------------------------
+        if args.usextb == "None":
+            self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
+        else:
+            self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+args.usextb+"_"+str(time.time())+"/"
         
-        self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
         os.makedirs(self.BPA_FOLDER_DIRECTORY, exist_ok=True) #
         
         self.Model_hess = None #
@@ -1596,6 +1672,58 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 
             psi4.core.clean() 
         return e, g, input_data_for_display, finish_frag
+
+
+    def tblite_calculation(self, file_directory, element_number_list, electric_charge_and_multiplicity, iter, method):
+        """execute QM calclation."""
+        gradient_list = []
+        energy_list = []
+        geometry_num_list = []
+        geometry_optimized_num_list = []
+        finish_frag = False
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
+        for num, input_file in enumerate(file_list):
+            try:
+                print("\n",input_file,"\n")
+
+                with open(input_file,"r") as f:
+                    input_data = f.readlines()
+                
+                positions = []
+                for word in input_data[1:]:
+                    positions.append(word.split()[1:4])
+                    
+                positions = np.array(positions, dtype="float64") / self.bohr2angstroms
+                calc = Calculator(method, element_number_list, positions)
+                res = calc.singlepoint()
+                e = float(res.get("energy"))  #hartree
+                g = res.get("gradient") #hartree/Bohr
+                        
+                print("\n")
+
+                
+                if self.FC_COUNT == -1:
+                    pass
+                
+                elif iter % self.FC_COUNT == 0:
+                    print("error (cant calculate hessian)")
+                    return 0, 0, 0, finish_frag 
+                
+
+
+            except Exception as error:
+                print(error)
+                print("This molecule could not be optimized.")
+                finish_frag = True
+                return 0, 0, 0, finish_frag 
+                
+        return e, g, positions, finish_frag
+
+
 
 
     def calc_biaspot(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, initial_geom_num_list):
@@ -2819,6 +2947,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         
         force_data["opt_method"] = args.opt_method
         
+        force_data["xtb"] = args.usextb
+        
         return force_data
 
 
@@ -2854,6 +2984,15 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         finish_frag = False
         exit_flag = False
         #-----------------------------------
+        if force_data["xtb"] == "None":
+            pass
+        else:
+            element_number_list = []
+            for elem in element_list:
+                element_number_list.append(element_number(elem))
+            element_number_list = np.array(element_number_list, dtype="int")
+        #----------------------------------
+        
         for iter in range(self.NSTEP):
             exit_file_detect = glob.glob(self.BPA_FOLDER_DIRECTORY+"*.txt")
             for file in exit_file_detect:
@@ -2863,10 +3002,14 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             if exit_flag:
                 psi4.core.clean()
                 break
-            print("\n# ITR. "+str(iter)+"\n")  
-            e, g, geom_num_list, finish_frag = self.psi4_calculation(file_directory, element_list, 
-            electric_charge_and_multiplicity, iter)
+            print("\n# ITR. "+str(iter)+"\n")
+            #---------------------------------------
+            if force_data["xtb"] == "None":
+                e, g, geom_num_list, finish_frag = self.psi4_calculation(file_directory, element_list,  electric_charge_and_multiplicity, iter)
+            else:
+                e, g, geom_num_list, finish_frag = self.tblite_calculation(file_directory, element_number_list,  electric_charge_and_multiplicity, iter, force_data["xtb"])
             
+            #---------------------------------------
             if iter == 0:
                 initial_geom_num_list = geom_num_list
                 pre_geom = initial_geom_num_list
@@ -2893,6 +3036,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             
             _, AFIR_e, new_g = self.calc_biaspot(e, g, geom_num_list, element_list, force_data, pre_g, iter, initial_geom_num_list)#new_geometry:ang.
             
+
             #if iter == 0:
             #    Model_hess = Model_hess_tmp(np.eye(len(element_list*3))+np.dot((new_g.reshape(len(new_g)*3,1)), (new_g.reshape(1,len(new_g)*3))))
             #    print(Model_hess.model_hess)
