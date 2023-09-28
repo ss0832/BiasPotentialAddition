@@ -18,7 +18,7 @@ About AFIR: https://afir.sci.hokudai.ac.jp/documents/manual/2
  - numpy
  - matplotlib
  - scipy
-
+ - tblite (If you use extended tight binding method, this module is required.)
 ## References
 
 References are given in the source code.
@@ -195,6 +195,14 @@ $V(\phi) = 0.5k(\phi - \phi_0)^2$
 Example 1) `-kda 2.0 60 1,2,3,4`
 
 With a spring constant of 2.0 a.u. and an equilibrium angle of 60 degrees, apply a potential so that the dihedral angles of the planes formed by the 1st, 2nd, and 3rd atoms and the 2nd, 3rd, and 4th atoms approach 60 degrees.
+
+`-xtb`
+
+Use extended tight binding method. (It is required tblite (python module).)
+
+Example 1) `-xtb GFN2-xTB`
+
+Use GFN2-xTB method to optimize molecular structure.
 
  - Other options are experimental.
 
