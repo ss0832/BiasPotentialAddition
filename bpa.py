@@ -4,7 +4,7 @@ import glob
 import copy
 import time
 import datetime
-import psi4
+
 import random
 import math
 import argparse
@@ -15,6 +15,11 @@ from scipy.signal import argrelextrema
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+try:
+    import psi4
+except:
+    print("you can't use psi4.")
 
 try:
     from tblite.interface import Calculator
@@ -59,7 +64,7 @@ Psi4
  D. G. A. Smith, L. A. Burns, A. C. Simmonett, R. M. Parrish, M. C. Schieber, R. Galvelis, P. Kraus, H. Kruse, R. Di Remigio, A. Alenaizan, A. M. James, S. Lehtola, J. P. Misiewicz, M. Scheurer, R. A. Shaw, J. B. Schriber, Y. Xie, Z. L. Glick, D. A. Sirianni, J. S. O'Brien, J. M. Waldrop, A. Kumar, E. G. Hohenstein, B. P. Pritchard, B. R. Brooks, H. F. Schaefer III, A. Yu. Sokolov, K. Patkowski, A. E. DePrince III, U. Bozkaya, R. A. King, F. A. Evangelista, J. M. Turney, T. D. Crawford, C. D. Sherrill, "Psi4 1.4: Open-Source Software for High-Throughput Quantum Chemistry", J. Chem. Phys. 152(18) 184108 (2020).
 
 GFN2-xTB(tblite)
-J. Chem. Theory Comput. 2019, 15, 3, 1652–1671
+J. Chem. Theory Comput. 2019, 15, 3, 1652–1671 
 GFN-xTB(tblite)
 J. Chem. Theory Comput. 2017, 13, 5, 1989–2009
 """
@@ -94,6 +99,36 @@ def parser():
     parser.add_argument("-xtb", "--usextb",  type=str, default="None", help='use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB ')
     args = parser.parse_args()
     return args
+
+class Interface:
+    def __init__(self, input_file):
+        self.INPUT = input_file
+        self.basisset = '6-31G(d)'#basisset (ex. 6-31G*)
+        self.functional = 'b3lyp'#functional(ex. b3lyp)
+        self.sub_basisset = '' #sub_basisset (ex. I LanL2DZ)
+
+        self.NSTEP = 300 #iter. number
+        self.N_THREAD = 8 #threads
+        self.SET_MEMORY = '1GB' #use mem(ex. 1GB)
+        self.DELTA = 'x'
+
+        self.manual_AFIR = ['0.0', '1', '2'] #manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]
+        self.repulsive_potential = ['0.0','1.0', '1', '2'] #Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]
+        self.repulsive_potential_v2 = ['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2']#Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]
+        self.keep_pot = ['0.0', '1.0', '1,2']#keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
+        self.anharmonic_keep_pot = ['0.0', '1.0', '1.0', '1,2']#Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
+        self.keep_angle = ['0.0', '90', '1,2,3']#keep angle 0.5*k*(θ - θ0)^2 (0 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep angle (degrees)] [atom1,atom2,atom3] ...] 
+        self.keep_dihedral_angle = ['0.0', '90', '1,2,3,4']#keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] 
+        self.void_point_pot = ['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"]#void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] 
+        self.gaussian_pot = ['0.0']#Add Gaussian-type bias potential around the initial structure. (ex.) [energy (kJ/mol)]'
+    
+        self.fix_atoms = ""#fix atoms (ex.) [atoms (ex.) 1,2,3-6]
+        self.md_like_perturbation = "0.0"
+        self.geom_info = "1"#calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]
+        self.opt_method = ["AdaBelief"]#optimization method for QM calclation (default: AdaBelief) (mehod_list:(steepest descent method) RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE third_order_momentum_Adam (quasi-Newton method) mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS, TRM_FSB, TRM_BFGS) (notice you can combine two methods, steepest descent family and quasi-Newton method family. The later method is used if gradient is small enough. [[steepest descent] [quasi-Newton method]]) (ex.) [opt_method]
+        self.calc_exact_hess = -1#calculate exact hessian per steps (ex.) [steps per one hess calculation]
+        self.usextb = "None"#use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB 
+        return
 
 
 def UFF_VDW_distance_lib(element):
