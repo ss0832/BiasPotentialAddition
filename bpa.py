@@ -19,12 +19,12 @@ import numpy as np
 try:
     import psi4
 except:
-    print("you can't use psi4.")
+    print("You can't use psi4.")
 
 try:
     from tblite.interface import Calculator
 except:
-    print("you can't use extended tight binding method.")
+    print("You can't use extended tight binding method.")
 
 """
     BiasPotentialAddition
@@ -136,8 +136,6 @@ def UFF_VDW_distance_lib(element):
                 
     return UFF_VDW_distance[element] / UnitValueLib().bohr2angstroms#Bohr
 
-            
-            
 def UFF_VDW_well_depth_lib(element):
                 
     UFF_VDW_well_depth = {'H':0.044, 'He':0.056 ,'Li':0.025 ,'Be':0.085 ,'B':0.180,'C': 0.105, 'N':0.069, 'O':0.060,'F':0.050,'Ne':0.042 , 'Na':0.030, 'Mg':0.111 ,'Al':0.505 ,'Si': 0.402, 'P':0.305, 'S':0.274, 'Cl':0.227,  'Ar':0.185 ,'K':0.035 ,'Ca':0.238 ,'Sc':0.019 ,'Ti':0.017 ,'V':0.016 , 'Cr':0.015, 'Mn':0.013 ,'Fe': 0.013,'Co':0.014 ,'Ni':0.015 ,'Cu':0.005 ,'Zn':0.124 ,'Ga':0.415 ,'Ge':0.379, 'As':0.309 ,'Se':0.291,'Br':0.251,'Kr':0.220 ,'Rb':0.04 ,'Sr':0.235 ,'Y':0.072 ,'Zr':0.069 ,'Nb':0.059 ,'Mo':0.056 ,'Tc':0.048 ,'Ru':0.056 ,'Rh':0.053 ,'Pd':0.048 ,'Ag':0.036 ,'Cd':0.228 ,'In':0.599 ,'Sn':0.567 ,'Sb':0.449 ,'Te':0.398 , 'I':0.339,'Xe':0.332 , 'Cs':0.045 ,'Ba':0.364 , 'La':0.017 , 'Ce':0.013 ,'Pr':0.010 ,'Nd':0.010 ,'Pm':0.009 ,'Sm':0.008 ,'Eu':0.008 ,'Gd':0.009 ,'Tb':0.007 ,'Dy':0.007 ,'Ho':0.007 ,'Er':0.007 ,'Tm':0.006 ,'Yb':0.228 ,'Lu':0.041 ,'Hf':0.072 ,'Ta':0.081 ,'W':0.067 ,'Re':0.066 ,'Os':0.037 ,'Ir':0.073 ,'Pt':0.080 ,'Au':0.039 ,'Hg':0.385 ,'Tl':0.680 ,'Pb':0.663 ,'Bi':0.518 ,'Po':0.325 ,'At':0.284 ,'Rn':0.248}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 # kcal/mol
@@ -168,7 +166,6 @@ class UnitValueLib:
         self.bohr2angstroms = 0.52917721067 #
         self.hartree2kjmol = 2625.500 #
         return
-
 
 class CalculateMoveVector:
     def __init__(self, DELTA, Opt_params, Model_hess, FC_COUNT=-1, temperature=0.0):
@@ -1424,353 +1421,21 @@ class CalculateMoveVector:
         
         return new_geometry, np.array(move_vector, dtype="float64"), iter, self.Opt_params, self.Model_hess
         
-
-
-class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
-    def __init__(self, args):
-    
+class BiasPotentialCalculation:
+    def __init__(self, Model_hess, FC_COUNT):
         UVL = UnitValueLib()
-        np.set_printoptions(precision=12, floatmode="fixed", suppress=True)
         self.hartree2kcalmol = UVL.hartree2kcalmol #
         self.bohr2angstroms = UVL.bohr2angstroms #
         self.hartree2kjmol = UVL.hartree2kjmol #
- 
-        self.ENERGY_LIST_FOR_PLOTTING = [] #
-        self.AFIR_ENERGY_LIST_FOR_PLOTTING = [] #
-        self.NUM_LIST = [] #
-
-        self.MAX_FORCE_THRESHOLD = 0.0003 #
-        self.RMS_FORCE_THRESHOLD = 0.0002 #
-        self.MAX_DISPLACEMENT_THRESHOLD = 0.0015 # 
-        self.RMS_DISPLACEMENT_THRESHOLD = 0.0010 #
-
+        self.Model_hess = Model_hess
+        self.FC_COUNT = FC_COUNT
         
-        self.args = args #
-        self.FC_COUNT = args.calc_exact_hess # 
-        #---------------------------
-        self.temperature = float(args.md_like_perturbation)
-        
-        #---------------------------
-        if len(args.opt_method) > 2:
-            print("invaild input (-opt)")
-            sys.exit(0)
-        
-        if args.DELTA == "x":
-            if args.opt_method[0] == "FSB":
-                args.DELTA = 0.15
-            elif args.opt_method[0] == "RFO_FSB":
-                args.DELTA = 0.15
-            elif args.opt_method[0] == "BFGS":
-                args.DELTA = 0.15
-            elif args.opt_method[0] == "RFO_BFGS":
-                args.DELTA = 0.15
-                
-            elif args.opt_method[0] == "mBFGS":
-                args.DELTA = 0.50
-            elif args.opt_method[0] == "mFSB":
-                args.DELTA = 0.50
-            elif args.opt_method[0] == "RFO_mBFGS":
-                args.DELTA = 0.30
-            elif args.opt_method[0] == "RFO_mFSB":
-                args.DELTA = 0.30
-
-            elif args.opt_method[0] == "Adabound":
-                args.DELTA = 0.01
-            elif args.opt_method[0] == "AdaMax":
-                args.DELTA = 0.01
-                
-            elif args.opt_method[0] == "TRM_FSB":
-                args.DELTA = 0.60
-            elif args.opt_method[0] == "TRM_BFGS":
-                args.DELTA = 0.60
-            else:
-                args.DELTA = 0.06
-        else:
-            pass 
-        self.DELTA = float(args.DELTA) # 
-
-        self.N_THREAD = args.N_THREAD #
-        self.SET_MEMORY = args.SET_MEMORY #
-        self.START_FILE = args.INPUT #
-        self.NSTEP = args.NSTEP #
-        #-----------------------------
-        self.BASIS_SET = args.basisset # 
-        self.FUNCTIONAL = args.functional # 
-        
-        if len(args.sub_basisset) % 2 != 0:
-            print("invaild input (-sub_bs)")
-            sys.exit(0)
-        
-        self.SUB_BASIS_SET = "" # 
-        if len(args.sub_basisset) > 0:
-            self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
-            for j in range(int(len(args.sub_basisset)/2)):
-                self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
-            print("Basis Sets defined by User are detected.")
-            print(self.SUB_BASIS_SET) #
-        #-----------------------------
-        if args.usextb == "None":
-            self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
-        else:
-            self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+args.usextb+"_"+str(time.time())+"/"
-        
-        os.makedirs(self.BPA_FOLDER_DIRECTORY, exist_ok=True) #
-        
-        self.Model_hess = None #
-        self.Opt_params = None #
-        
-        return
-        
-    def make_geometry_list(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
-        """Load initial structure"""
-        geometry_list = []
- 
-        with open(self.START_FILE,"r") as f:
-            words = f.readlines()
-            
-        start_data = []
-        for word in words:
-            start_data.append(word.split())
-            
-        electric_charge_and_multiplicity = start_data[0]
-        element_list = []
-            
-
-
-        for i in range(1, len(start_data)):
-            element_list.append(start_data[i][0])
-                
-        geometry_list.append(start_data)
-
-
-        return geometry_list, element_list, electric_charge_and_multiplicity
-
-    def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
-        """load structure updated geometry for next QM calculation"""
-        new_geometry = new_geometry.tolist()
-        
-        geometry_list = []
-
-        new_data = [electric_charge_and_multiplicity]
-        for num, geometry in enumerate(new_geometry):
-           
-            geometry = list(map(str, geometry))
-            geometry = [element_list[num]] + geometry
-            new_data.append(geometry)
-            print(" ".join(geometry))
-            
-        geometry_list.append(new_data)
-        return geometry_list
-
-    def make_psi4_input_file(self, geometry_list, iter):
-        """structure updated geometry is saved."""
-        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
-        try:
-            os.mkdir(file_directory)
-        except:
-            pass
-        for y, geometry in enumerate(geometry_list):
-            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
-                for rows in geometry:
-                    for row in rows:
-                        w.write(str(row))
-                        w.write(" ")
-                    w.write("\n")
-        return file_directory
-
-    def sinple_plot(self, num_list, energy_list, energy_list_2, file_directory):
-        
-        fig = plt.figure()
-
-        ax1 = fig.add_subplot(2, 1, 1)
-        ax2 = fig.add_subplot(2, 1, 2)
-
-        ax1.plot(num_list, energy_list, "g--.")
-        ax2.plot(num_list, energy_list_2, "b--.")
-
-        ax1.set_xlabel('ITR.')
-        ax2.set_xlabel('ITR.')
-
-        ax1.set_ylabel('Electronic Energy [kcal/mol]')
-        ax2.set_ylabel('Electronic Energy [kcal/mol]')
-        plt.title('normal_above AFIR_below')
-        plt.tight_layout()
-        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot_sinple_"+str(time.time())+".png", format="png", dpi=300)
-        plt.close()
-        return
-
-    def xyz_file_make(self):
-        """optimized path is saved."""
-        print("\ngeometry collection processing...\n")
-        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
-        #print(file_list,"\n")
-        for m, file in enumerate(file_list):
-            #print(file,m)
-            with open(file,"r") as f:
-                sample = f.readlines()
-                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
-                    atom_num = len(sample)-1
-                    w.write(str(atom_num)+"\n")
-                    w.write("Frame "+str(m)+"\n")
-                del sample[0]
-                for i in sample:
-                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
-                        w2.write(i)
-        print("\ngeometry collection is completed...\n")
-        return
-
-    def psi4_calculation(self, file_directory, element_list, electric_charge_and_multiplicity, iter):
-        """execute QM calclation."""
-        gradient_list = []
-        energy_list = []
-        geometry_num_list = []
-        geometry_optimized_num_list = []
-        finish_frag = False
-        try:
-            os.mkdir(file_directory)
-        except:
-            pass
-        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
-        for num, input_file in enumerate(file_list):
-            try:
-                print("\n",input_file,"\n")
-                if int(electric_charge_and_multiplicity[1]) > 1:
-                    psi4.set_options({'reference': 'uks'})
-                logfile = file_directory+"/"+self.START_FILE[:-4]+'_'+str(num)+'.log'
-                psi4.set_options({"MAXITER": 700})
-                if len(self.SUB_BASIS_SET) > 0:
-                    psi4.basis_helper(self.SUB_BASIS_SET, name='User_Basis_Set', set_option=False)
-                    psi4.set_options({"basis":'User_Basis_Set'})
-                else:
-                    psi4.set_options({"basis":self.BASIS_SET})
-                
-                psi4.set_output_file(logfile)
-                psi4.set_num_threads(nthread=self.N_THREAD)
-                psi4.set_memory(self.SET_MEMORY)
-                
-                psi4.set_options({"cubeprop_tasks": ["esp"],'cubeprop_filepath': file_directory})
-                with open(input_file,"r") as f:
-                    input_data = f.read()
-                    input_data = psi4.geometry(input_data)
-                    input_data_for_display = np.array(input_data.geometry(), dtype = "float64")
-                            
-                g, wfn = psi4.gradient(self.FUNCTIONAL, molecule=input_data, return_wfn=True)
-
-                g = np.array(g, dtype = "float64")
-                psi4.oeprop(wfn, 'DIPOLE')
-                psi4.oeprop(wfn, 'MULLIKEN_CHARGES')
-                psi4.oeprop(wfn, 'LOWDIN_CHARGES')
-                #psi4.oeprop(wfn, 'WIBERG_LOWDIN_INDICES')
-                lumo_alpha = wfn.nalpha()
-                lumo_beta = wfn.nbeta()
-
-                MO_levels =np.array(wfn.epsilon_a_subset("AO","ALL")).tolist()#MO energy levels
-                with open(self.BPA_FOLDER_DIRECTORY+"MO_levels.csv" ,"a") as f:
-                    f.write(",".join(list(map(str,MO_levels))+[str(lumo_alpha),str(lumo_beta)])+"\n")
-                with open(self.BPA_FOLDER_DIRECTORY+"dipole.csv" ,"a") as f:
-                    f.write(",".join(list(map(str,(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE')).tolist()))+[str(np.linalg.norm(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE'),ord=2))])+"\n")
-                with open(self.BPA_FOLDER_DIRECTORY+"MULLIKEN_CHARGES.csv" ,"a") as f:
-                    f.write(",".join(list(map(str,wfn.variable('MULLIKEN CHARGES').tolist())))+"\n")           
-                #with open(input_file[:-4]+"_WIBERG_LOWDIN_INDICES.csv" ,"a") as f:
-                #    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
-                #        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
-                        
-                with open(input_file[:-4]+".log","r") as f:
-                    word_list = f.readlines()
-                    for word in word_list:
-                        if "    Total Energy =             " in word:
-                            word = word.replace("    Total Energy =             ","")
-                            e = (float(word))
-                print("\n")
-
-                
-                if self.FC_COUNT == -1:
-                    pass
-                
-                elif iter % self.FC_COUNT == 0:
-                    
-                    """exact hessian"""
-                    _, wfn = psi4.frequencies(self.FUNCTIONAL, return_wfn=True, ref_gradient=wfn.gradient())
-                    exact_hess = np.array(wfn.hessian())
-                    
-                    freqs = np.array(wfn.frequencies())
-                    
-                    print("frequencies: \n",freqs)
-                    self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
-                
-                
-
-
-            except Exception as error:
-                print(error)
-                print("This molecule could not be optimized.")
-                finish_frag = True
-                return 0, 0, 0, finish_frag 
-                
-            psi4.core.clean() 
-        return e, g, input_data_for_display, finish_frag
-
-
-    def tblite_calculation(self, file_directory, element_number_list, electric_charge_and_multiplicity, iter, method):
-        """execute QM calclation."""
-        gradient_list = []
-        energy_list = []
-        geometry_num_list = []
-        geometry_optimized_num_list = []
-        finish_frag = False
-        try:
-            os.mkdir(file_directory)
-        except:
-            pass
-        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
-        for num, input_file in enumerate(file_list):
-            try:
-                print("\n",input_file,"\n")
-
-                with open(input_file,"r") as f:
-                    input_data = f.readlines()
-                
-                positions = []
-                for word in input_data[1:]:
-                    positions.append(word.split()[1:4])
-                    
-                positions = np.array(positions, dtype="float64") / self.bohr2angstroms
-                calc = Calculator(method, element_number_list, positions)
-                res = calc.singlepoint()
-                e = float(res.get("energy"))  #hartree
-                g = res.get("gradient") #hartree/Bohr
-                        
-                print("\n")
-
-                
-                if self.FC_COUNT == -1:
-                    pass
-                
-                elif iter % self.FC_COUNT == 0:
-                    print("error (cant calculate hessian)")
-                    return 0, 0, 0, finish_frag 
-                
-
-
-            except Exception as error:
-                print(error)
-                print("This molecule could not be optimized.")
-                finish_frag = True
-                return 0, 0, 0, finish_frag 
-                
-        return e, g, positions, finish_frag
-
-
-
-
-    def calc_biaspot(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, initial_geom_num_list):
+    def main(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, initial_geom_num_list):
         numerical_derivative_delta = 0.0001 #unit:Bohr
         #g:hartree/Bohr
         #e:hartree
         #geom_num_list:Bohr
-        
-     
-        
+
         def calc_LJ_Repulsive_pot(geom_num_list, well_scale , dist_scale, fragm_1, fragm_2, element_list):  
             energy = 0.0
             for i, j in itertools.product(fragm_1, fragm_2):
@@ -2819,8 +2484,344 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         
         #new_geometry:ang. 
         #AFIR_e:hartree
-        return BPA_grad_list, AFIR_e, new_g
         
+        return BPA_grad_list, AFIR_e, new_g
+
+class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
+    def __init__(self, args):
+    
+        UVL = UnitValueLib()
+        np.set_printoptions(precision=12, floatmode="fixed", suppress=True)
+        self.hartree2kcalmol = UVL.hartree2kcalmol #
+        self.bohr2angstroms = UVL.bohr2angstroms #
+        self.hartree2kjmol = UVL.hartree2kjmol #
+ 
+        self.ENERGY_LIST_FOR_PLOTTING = [] #
+        self.AFIR_ENERGY_LIST_FOR_PLOTTING = [] #
+        self.NUM_LIST = [] #
+
+        self.MAX_FORCE_THRESHOLD = 0.0003 #
+        self.RMS_FORCE_THRESHOLD = 0.0002 #
+        self.MAX_DISPLACEMENT_THRESHOLD = 0.0015 # 
+        self.RMS_DISPLACEMENT_THRESHOLD = 0.0010 #
+
+        
+        self.args = args #
+        self.FC_COUNT = args.calc_exact_hess # 
+        #---------------------------
+        self.temperature = float(args.md_like_perturbation)
+        
+        #---------------------------
+        if len(args.opt_method) > 2:
+            print("invaild input (-opt)")
+            sys.exit(0)
+        
+        if args.DELTA == "x":
+            if args.opt_method[0] == "FSB":
+                args.DELTA = 0.15
+            elif args.opt_method[0] == "RFO_FSB":
+                args.DELTA = 0.15
+            elif args.opt_method[0] == "BFGS":
+                args.DELTA = 0.15
+            elif args.opt_method[0] == "RFO_BFGS":
+                args.DELTA = 0.15
+                
+            elif args.opt_method[0] == "mBFGS":
+                args.DELTA = 0.50
+            elif args.opt_method[0] == "mFSB":
+                args.DELTA = 0.50
+            elif args.opt_method[0] == "RFO_mBFGS":
+                args.DELTA = 0.30
+            elif args.opt_method[0] == "RFO_mFSB":
+                args.DELTA = 0.30
+
+            elif args.opt_method[0] == "Adabound":
+                args.DELTA = 0.01
+            elif args.opt_method[0] == "AdaMax":
+                args.DELTA = 0.01
+                
+            elif args.opt_method[0] == "TRM_FSB":
+                args.DELTA = 0.60
+            elif args.opt_method[0] == "TRM_BFGS":
+                args.DELTA = 0.60
+            else:
+                args.DELTA = 0.06
+        else:
+            pass 
+        self.DELTA = float(args.DELTA) # 
+
+        self.N_THREAD = args.N_THREAD #
+        self.SET_MEMORY = args.SET_MEMORY #
+        self.START_FILE = args.INPUT #
+        self.NSTEP = args.NSTEP #
+        #-----------------------------
+        self.BASIS_SET = args.basisset # 
+        self.FUNCTIONAL = args.functional # 
+        
+        if len(args.sub_basisset) % 2 != 0:
+            print("invaild input (-sub_bs)")
+            sys.exit(0)
+        
+        self.SUB_BASIS_SET = "" # 
+        if len(args.sub_basisset) > 0:
+            self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
+            for j in range(int(len(args.sub_basisset)/2)):
+                self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
+            print("Basis Sets defined by User are detected.")
+            print(self.SUB_BASIS_SET) #
+        #-----------------------------
+        if args.usextb == "None":
+            self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
+        else:
+            self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+args.usextb+"_"+str(time.time())+"/"
+        
+        os.makedirs(self.BPA_FOLDER_DIRECTORY, exist_ok=True) #
+        
+        self.Model_hess = None #
+        self.Opt_params = None #
+        
+        return
+        
+    def make_geometry_list(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """Load initial structure"""
+        geometry_list = []
+ 
+        with open(self.START_FILE,"r") as f:
+            words = f.readlines()
+            
+        start_data = []
+        for word in words:
+            start_data.append(word.split())
+            
+        electric_charge_and_multiplicity = start_data[0]
+        element_list = []
+            
+
+
+        for i in range(1, len(start_data)):
+            element_list.append(start_data[i][0])
+                
+        geometry_list.append(start_data)
+
+
+        return geometry_list, element_list, electric_charge_and_multiplicity
+
+    def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """load structure updated geometry for next QM calculation"""
+        new_geometry = new_geometry.tolist()
+        
+        geometry_list = []
+
+        new_data = [electric_charge_and_multiplicity]
+        for num, geometry in enumerate(new_geometry):
+           
+            geometry = list(map(str, geometry))
+            geometry = [element_list[num]] + geometry
+            new_data.append(geometry)
+            print(" ".join(geometry))
+            
+        geometry_list.append(new_data)
+        return geometry_list
+
+    def make_psi4_input_file(self, geometry_list, iter):
+        """structure updated geometry is saved."""
+        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        for y, geometry in enumerate(geometry_list):
+            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
+                for rows in geometry:
+                    for row in rows:
+                        w.write(str(row))
+                        w.write(" ")
+                    w.write("\n")
+        return file_directory
+
+    def sinple_plot(self, num_list, energy_list, energy_list_2, file_directory):
+        
+        fig = plt.figure()
+
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax2 = fig.add_subplot(2, 1, 2)
+
+        ax1.plot(num_list, energy_list, "g--.")
+        ax2.plot(num_list, energy_list_2, "b--.")
+
+        ax1.set_xlabel('ITR.')
+        ax2.set_xlabel('ITR.')
+
+        ax1.set_ylabel('Electronic Energy [kcal/mol]')
+        ax2.set_ylabel('Electronic Energy [kcal/mol]')
+        plt.title('normal_above AFIR_below')
+        plt.tight_layout()
+        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot_sinple_"+str(time.time())+".png", format="png", dpi=300)
+        plt.close()
+        return
+
+    def xyz_file_make(self):
+        """optimized path is saved."""
+        print("\ngeometry collection processing...\n")
+        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
+        #print(file_list,"\n")
+        for m, file in enumerate(file_list):
+            #print(file,m)
+            with open(file,"r") as f:
+                sample = f.readlines()
+                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
+                    atom_num = len(sample)-1
+                    w.write(str(atom_num)+"\n")
+                    w.write("Frame "+str(m)+"\n")
+                del sample[0]
+                for i in sample:
+                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
+                        w2.write(i)
+        print("\ngeometry collection is completed...\n")
+        return
+
+    def psi4_calculation(self, file_directory, element_list, electric_charge_and_multiplicity, iter):
+        """execute QM calclation."""
+        gradient_list = []
+        energy_list = []
+        geometry_num_list = []
+        geometry_optimized_num_list = []
+        finish_frag = False
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
+        for num, input_file in enumerate(file_list):
+            try:
+                print("\n",input_file,"\n")
+                if int(electric_charge_and_multiplicity[1]) > 1:
+                    psi4.set_options({'reference': 'uks'})
+                logfile = file_directory+"/"+self.START_FILE[:-4]+'_'+str(num)+'.log'
+                psi4.set_options({"MAXITER": 700})
+                if len(self.SUB_BASIS_SET) > 0:
+                    psi4.basis_helper(self.SUB_BASIS_SET, name='User_Basis_Set', set_option=False)
+                    psi4.set_options({"basis":'User_Basis_Set'})
+                else:
+                    psi4.set_options({"basis":self.BASIS_SET})
+                
+                psi4.set_output_file(logfile)
+                psi4.set_num_threads(nthread=self.N_THREAD)
+                psi4.set_memory(self.SET_MEMORY)
+                
+                psi4.set_options({"cubeprop_tasks": ["esp"],'cubeprop_filepath': file_directory})
+                with open(input_file,"r") as f:
+                    input_data = f.read()
+                    input_data = psi4.geometry(input_data)
+                    input_data_for_display = np.array(input_data.geometry(), dtype = "float64")
+                            
+                g, wfn = psi4.gradient(self.FUNCTIONAL, molecule=input_data, return_wfn=True)
+
+                g = np.array(g, dtype = "float64")
+                psi4.oeprop(wfn, 'DIPOLE')
+                psi4.oeprop(wfn, 'MULLIKEN_CHARGES')
+                psi4.oeprop(wfn, 'LOWDIN_CHARGES')
+                #psi4.oeprop(wfn, 'WIBERG_LOWDIN_INDICES')
+                lumo_alpha = wfn.nalpha()
+                lumo_beta = wfn.nbeta()
+
+                MO_levels =np.array(wfn.epsilon_a_subset("AO","ALL")).tolist()#MO energy levels
+                with open(self.BPA_FOLDER_DIRECTORY+"MO_levels.csv" ,"a") as f:
+                    f.write(",".join(list(map(str,MO_levels))+[str(lumo_alpha),str(lumo_beta)])+"\n")
+                with open(self.BPA_FOLDER_DIRECTORY+"dipole.csv" ,"a") as f:
+                    f.write(",".join(list(map(str,(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE')).tolist()))+[str(np.linalg.norm(psi4.constants.dipmom_au2debye*wfn.variable('DIPOLE'),ord=2))])+"\n")
+                with open(self.BPA_FOLDER_DIRECTORY+"MULLIKEN_CHARGES.csv" ,"a") as f:
+                    f.write(",".join(list(map(str,wfn.variable('MULLIKEN CHARGES').tolist())))+"\n")           
+                #with open(input_file[:-4]+"_WIBERG_LOWDIN_INDICES.csv" ,"a") as f:
+                #    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
+                #        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
+                        
+                with open(input_file[:-4]+".log","r") as f:
+                    word_list = f.readlines()
+                    for word in word_list:
+                        if "    Total Energy =             " in word:
+                            word = word.replace("    Total Energy =             ","")
+                            e = (float(word))
+                print("\n")
+
+                
+                if self.FC_COUNT == -1:
+                    pass
+                
+                elif iter % self.FC_COUNT == 0:
+                    
+                    """exact hessian"""
+                    _, wfn = psi4.frequencies(self.FUNCTIONAL, return_wfn=True, ref_gradient=wfn.gradient())
+                    exact_hess = np.array(wfn.hessian())
+                    
+                    freqs = np.array(wfn.frequencies())
+                    
+                    print("frequencies: \n",freqs)
+                    self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
+                
+                
+
+
+            except Exception as error:
+                print(error)
+                print("This molecule could not be optimized.")
+                finish_frag = True
+                return 0, 0, 0, finish_frag 
+                
+            psi4.core.clean() 
+        return e, g, input_data_for_display, finish_frag
+
+
+    def tblite_calculation(self, file_directory, element_number_list, electric_charge_and_multiplicity, iter, method):
+        """execute QM calclation."""
+        gradient_list = []
+        energy_list = []
+        geometry_num_list = []
+        geometry_optimized_num_list = []
+        finish_frag = False
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
+        for num, input_file in enumerate(file_list):
+            try:
+                print("\n",input_file,"\n")
+
+                with open(input_file,"r") as f:
+                    input_data = f.readlines()
+                
+                positions = []
+                for word in input_data[1:]:
+                    positions.append(word.split()[1:4])
+                    
+                positions = np.array(positions, dtype="float64") / self.bohr2angstroms
+                calc = Calculator(method, element_number_list, positions)
+                res = calc.singlepoint()
+                e = float(res.get("energy"))  #hartree
+                g = res.get("gradient") #hartree/Bohr
+                        
+                print("\n")
+
+                
+                if self.FC_COUNT == -1:
+                    pass
+                
+                elif iter % self.FC_COUNT == 0:
+                    print("error (cant calculate hessian)")
+                    return 0, 0, 0, finish_frag 
+                
+
+
+            except Exception as error:
+                print(error)
+                print("This molecule could not be optimized.")
+                finish_frag = True
+                return 0, 0, 0, finish_frag 
+                
+        return e, g, positions, finish_frag
+
+
     def force_data_parser(self, args):
         def num_parse(numbers):
             sub_list = []
@@ -3070,13 +3071,9 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             #-------------------
             if finish_frag:#If QM calculation doesnt end, the process of this program is terminated. 
                 break   
-            
-            _, AFIR_e, new_g = self.calc_biaspot(e, g, geom_num_list, element_list, force_data, pre_g, iter, initial_geom_num_list)#new_geometry:ang.
-            
-
-            #if iter == 0:
-            #    Model_hess = Model_hess_tmp(np.eye(len(element_list*3))+np.dot((new_g.reshape(len(new_g)*3,1)), (new_g.reshape(1,len(new_g)*3))))
-            #    print(Model_hess.model_hess)
+            CalcBiaspot = BiasPotentialCalculation(self.Model_hess, self.FC_COUNT)
+            _, AFIR_e, new_g = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_g, iter, initial_geom_num_list)#new_geometry:ang.
+            self.Model_hess = CalcBiaspot.Model_hess
             #----------------------------
             if len(force_data["fix_atoms"]) > 0:
                 for j in force_data["fix_atoms"]:
