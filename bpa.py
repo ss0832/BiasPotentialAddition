@@ -2405,16 +2405,16 @@ class BiasPotentialCalculation:
 
             if vec_norm <= a:
                 d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (-3.75) * (0.5 / (c - d)) #d_ene_per_dx_short * dx_short_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
                 grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
                 
             elif a < vec_norm and vec_norm <= b:
                 d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (- 60.0 * x_short ** 2 + 120.0 * x_short ** 3 - 60 * x_short ** 4) * (0.5 / (c - d)) #d_ene_per_dx_short * dx_short_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
                 grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
                 
             elif b < vec_norm and vec_norm < c:
@@ -2423,24 +2423,22 @@ class BiasPotentialCalculation:
                 
             elif c <= vec_norm and vec_norm < d:
                 d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (- 60.0 * x_long ** 2 + 120.0 * x_long ** 3 - 60 * x_long ** 4) * (0.5 / (b - a)) #d_ene_per_dx_long * dx_long_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
                 grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
                 
             elif d <= vec_norm:
                 d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (-3.75) * (0.5 / (b - a)) #d_ene_per_dx_long * dx_long_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
                 grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
                 
             else:
                 print("well grad error")
                 raise "well grad error"
-            grad_1, grad_2 = -grad_1, -grad_2
-            #print(-d_ene_per_d_vec_norm)
-            #print(grad_1, grad_2)
+
             return grad_1, grad_2
         
         
