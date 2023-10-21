@@ -90,11 +90,13 @@ def parser():
     parser.add_argument("-kda", "--keep_dihedral_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3,4'], help='keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] ')
     parser.add_argument("-vpp", "--void_point_pot", nargs="*",  type=str, default=['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"], help='void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] ')
     parser.add_argument("-gp", "--gaussian_pot", nargs="*",  type=str, default=['0.0'], help='Add Gaussian-type bias potential around the initial structure. (ex.) [energy (kJ/mol)]')
+    parser.add_argument("-wp", "--well_pot", nargs="*", type=str, default=['0.0','1,2','0.5,0.6,1.5,1.6'], help="Add potential to limit atom distance. (ex.) [[wall energy (kJ/mol)] [atom1,atom2] [a,b,c,d (a<b<c<d) (ang.)] ...]")
+    
     
     parser.add_argument("-fix", "--fix_atoms", nargs="*",  type=str, default="", help='fix atoms (ex.) [atoms (ex.) 1,2,3-6]')
     parser.add_argument("-md", "--md_like_perturbation",  type=str, default="0.0", help='add perturbation like molecule dynamics (ex.) [[temperature (unit. K)]]')
     parser.add_argument("-gi", "--geom_info", nargs="*",  type=str, default="1", help='calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]')
-    parser.add_argument("-opt", "--opt_method", nargs="*", type=str, default=["AdaBelief"], help='optimization method for QM calclation (default: AdaBelief) (mehod_list:(steepest descent method) RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE third_order_momentum_Adam (quasi-Newton method) mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS, TRM_FSB, TRM_BFGS) (notice you can combine two methods, steepest descent family and quasi-Newton method family. The later method is used if gradient is small enough. [[steepest descent] [quasi-Newton method]]) (ex.) [opt_method]')
+    parser.add_argument("-opt", "--opt_method", nargs="*", type=str, default=["AdaBelief"], help='optimization method for QM calclation (default: AdaBelief) (mehod_list:(steepest descent method group) RADAM, AdaBelief, AdaDiff, EVE, AdamW, Adam, Adadelta, Adafactor, Prodigy, NAdam, AdaMax, FIRE, conjugate_gradient_descent (quasi-Newton method group) mBFGS, mFSB, RFO_mBFGS, RFO_mFSB, FSB, RFO_FSB, BFGS, RFO_BFGS, TRM_FSB, TRM_BFGS) (notice you can combine two methods, steepest descent family and quasi-Newton method family. The later method is used if gradient is small enough. [[steepest descent] [quasi-Newton method]]) (ex.) [opt_method]')
     parser.add_argument("-fc", "--calc_exact_hess",  type=int, default=-1, help='calculate exact hessian per steps (ex.) [steps per one hess calculation]')
     parser.add_argument("-xtb", "--usextb",  type=str, default="None", help='use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB ')
     args = parser.parse_args()
@@ -121,7 +123,7 @@ class Interface:
         self.keep_dihedral_angle = ['0.0', '90', '1,2,3,4']#keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] 
         self.void_point_pot = ['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"]#void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] 
         self.gaussian_pot = ['0.0']#Add Gaussian-type bias potential around the initial structure. (ex.) [energy (kJ/mol)]'
-    
+        self.well_pot = ['0.0','1,2','0.5,0.6,1.5,1.6']
         self.fix_atoms = ""#fix atoms (ex.) [atoms (ex.) 1,2,3-6]
         self.md_like_perturbation = "0.0"
         self.geom_info = "1"#calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]
@@ -138,12 +140,12 @@ def UFF_VDW_distance_lib(element):
 
 def UFF_VDW_well_depth_lib(element):
                 
-    UFF_VDW_well_depth = {'H':0.044, 'He':0.056 ,'Li':0.025 ,'Be':0.085 ,'B':0.180,'C': 0.105, 'N':0.069, 'O':0.060,'F':0.050,'Ne':0.042 , 'Na':0.030, 'Mg':0.111 ,'Al':0.505 ,'Si': 0.402, 'P':0.305, 'S':0.274, 'Cl':0.227,  'Ar':0.185 ,'K':0.035 ,'Ca':0.238 ,'Sc':0.019 ,'Ti':0.017 ,'V':0.016 , 'Cr':0.015, 'Mn':0.013 ,'Fe': 0.013,'Co':0.014 ,'Ni':0.015 ,'Cu':0.005 ,'Zn':0.124 ,'Ga':0.415 ,'Ge':0.379, 'As':0.309 ,'Se':0.291,'Br':0.251,'Kr':0.220 ,'Rb':0.04 ,'Sr':0.235 ,'Y':0.072 ,'Zr':0.069 ,'Nb':0.059 ,'Mo':0.056 ,'Tc':0.048 ,'Ru':0.056 ,'Rh':0.053 ,'Pd':0.048 ,'Ag':0.036 ,'Cd':0.228 ,'In':0.599 ,'Sn':0.567 ,'Sb':0.449 ,'Te':0.398 , 'I':0.339,'Xe':0.332 , 'Cs':0.045 ,'Ba':0.364 , 'La':0.017 , 'Ce':0.013 ,'Pr':0.010 ,'Nd':0.010 ,'Pm':0.009 ,'Sm':0.008 ,'Eu':0.008 ,'Gd':0.009 ,'Tb':0.007 ,'Dy':0.007 ,'Ho':0.007 ,'Er':0.007 ,'Tm':0.006 ,'Yb':0.228 ,'Lu':0.041 ,'Hf':0.072 ,'Ta':0.081 ,'W':0.067 ,'Re':0.066 ,'Os':0.037 ,'Ir':0.073 ,'Pt':0.080 ,'Au':0.039 ,'Hg':0.385 ,'Tl':0.680 ,'Pb':0.663 ,'Bi':0.518 ,'Po':0.325 ,'At':0.284 ,'Rn':0.248}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 # kcal/mol
+    UFF_VDW_well_depth = {'H':0.044, 'He':0.056 ,'Li':0.025 ,'Be':0.085 ,'B':0.180,'C': 0.105, 'N':0.069, 'O':0.060,'F':0.050,'Ne':0.042 , 'Na':0.030, 'Mg':0.111 ,'Al':0.505 ,'Si': 0.402, 'P':0.305, 'S':0.274, 'Cl':0.227,  'Ar':0.185 ,'K':0.035 ,'Ca':0.238 ,'Sc':0.019 ,'Ti':0.017 ,'V':0.016 , 'Cr':0.015, 'Mn':0.013 ,'Fe': 0.013,'Co':0.014 ,'Ni':0.015 ,'Cu':0.005 ,'Zn':0.124 ,'Ga':0.415 ,'Ge':0.379, 'As':0.309 ,'Se':0.291,'Br':0.251,'Kr':0.220 ,'Rb':0.04 ,'Sr':0.235 ,'Y':0.072 ,'Zr':0.069 ,'Nb':0.059 ,'Mo':0.056 ,'Tc':0.048 ,'Ru':0.056 ,'Rh':0.053 ,'Pd':0.048 ,'Ag':0.036 ,'Cd':0.228 ,'In':0.599 ,'Sn':0.567 ,'Sb':0.449 ,'Te':0.398 , 'I':0.339,'Xe':0.332 , 'Cs':0.045 ,'Ba':0.364 , 'La':0.017 , 'Ce':0.013 ,'Pr':0.010 ,'Nd':0.010 ,'Pm':0.009 ,'Sm':0.008 ,'Eu':0.008 ,'Gd':0.009 ,'Tb':0.007 ,'Dy':0.007 ,'Ho':0.007 ,'Er':0.007 ,'Tm':0.006 ,'Yb':0.228 ,'Lu':0.041 ,'Hf':0.072 ,'Ta':0.081 ,'W':0.067 ,'Re':0.066 ,'Os':0.037 ,'Ir':0.073 ,'Pt':0.080 ,'Au':0.039 ,'Hg':0.385 ,'Tl':0.680 ,'Pb':0.663 ,'Bi':0.518 ,'Po':0.325 ,'At':0.284 ,'Rn':0.248, 'X':0.010}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 # kcal/mol
                 
     return UFF_VDW_well_depth[element] / UnitValueLib().hartree2kcalmol
                 
 def covalent_radii_lib(element):
-    CRL = {"H": 0.32, "He": 0.46, "Li": 1.33, "Be": 1.02, "B": 0.85, "C": 0.75, "N": 0.71, "O": 0.63, "F": 0.64, "Ne": 0.67, "Na": 1.55, "Mg": 1.39, "Al":1.26, "Si": 1.16, "P": 1.11, "S": 1.03, "Cl": 0.99, "Ar": 0.96, "K": 1.96, "Ca": 1.71, "Sc": 1.48, "Ti": 1.36, "V": 1.34, "Cr": 1.22, "Mn": 1.19, "Fe": 1.16, "Co": 1.11, "Ni": 1.10, "Cu": 1.12, "Zn": 1.18, "Ga": 1.24, "Ge": 1.24, "As": 1.21, "Se": 1.16, "Br": 1.14, "Kr": 1.17, "Rb": 2.10, "Sr": 1.85, "Y": 1.63, "Zr": 1.54,"Nb": 1.47,"Mo": 1.38,"Tc": 1.28,"Ru": 1.25,"Rh": 1.25,"Pd": 1.20,"Ag": 1.28,"Cd": 1.36,"In": 1.42,"Sn": 1.40,"Sb": 1.40,"Te": 1.36,"I": 1.33,"Xe": 1.31,"Cs": 2.32,"Ba": 1.96,"La":1.80,"Ce": 1.63,"Pr": 1.76,"Nd": 1.74,"Pm": 1.73,"Sm": 1.72,"Eu": 1.68,"Gd": 1.69 ,"Tb": 1.68,"Dy": 1.67,"Ho": 1.66,"Er": 1.65,"Tm": 1.64,"Yb": 1.70,"Lu": 1.62,"Hf": 1.52,"Ta": 1.46,"W": 1.37,"Re": 1.31,"Os": 1.29,"Ir": 1.22,"Pt": 1.23,"Au": 1.24,"Hg": 1.33,"Tl": 1.44,"Pb":1.44,"Bi":1.51,"Po":1.45,"At":1.47,"Rn":1.42}#ang.
+    CRL = {"H": 0.32, "He": 0.46, "Li": 1.33, "Be": 1.02, "B": 0.85, "C": 0.75, "N": 0.71, "O": 0.63, "F": 0.64, "Ne": 0.67, "Na": 1.55, "Mg": 1.39, "Al":1.26, "Si": 1.16, "P": 1.11, "S": 1.03, "Cl": 0.99, "Ar": 0.96, "K": 1.96, "Ca": 1.71, "Sc": 1.48, "Ti": 1.36, "V": 1.34, "Cr": 1.22, "Mn": 1.19, "Fe": 1.16, "Co": 1.11, "Ni": 1.10, "Cu": 1.12, "Zn": 1.18, "Ga": 1.24, "Ge": 1.24, "As": 1.21, "Se": 1.16, "Br": 1.14, "Kr": 1.17, "Rb": 2.10, "Sr": 1.85, "Y": 1.63, "Zr": 1.54,"Nb": 1.47,"Mo": 1.38,"Tc": 1.28,"Ru": 1.25,"Rh": 1.25,"Pd": 1.20,"Ag": 1.28,"Cd": 1.36,"In": 1.42,"Sn": 1.40,"Sb": 1.40,"Te": 1.36,"I": 1.33,"Xe": 1.31,"Cs": 2.32,"Ba": 1.96,"La":1.80,"Ce": 1.63,"Pr": 1.76,"Nd": 1.74,"Pm": 1.73,"Sm": 1.72,"Eu": 1.68,"Gd": 1.69 ,"Tb": 1.68,"Dy": 1.67,"Ho": 1.66,"Er": 1.65,"Tm": 1.64,"Yb": 1.70,"Lu": 1.62,"Hf": 1.52,"Ta": 1.46,"W": 1.37,"Re": 1.31,"Os": 1.29,"Ir": 1.22,"Pt": 1.23,"Au": 1.24,"Hg": 1.33,"Tl": 1.44,"Pb":1.44,"Bi":1.51,"Po":1.45,"At":1.47,"Rn":1.42, 'X':1.000}#ang.
     # ref. Pekka Pyykkö; Michiko Atsumi (2009). “Molecular single-bond covalent radii for elements 1 - 118”. Chemistry: A European Journal 15: 186–197. doi:10.1002/chem.200800987. (H...Rn)
             
     return CRL[element] / UnitValueLib().bohr2angstroms#Bohr
@@ -313,10 +315,7 @@ class CalculateMoveVector:
             self.Model_hess = Model_hess_tmp(new_hess, momentum_disp=trust_radii)#valuable named 'momentum_disp' is trust_radii.
             return move_vector
         
-        
-        
-        
-        
+           
         
         def RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
             print("RFO_BFGS_quasi_newton_method")
@@ -754,7 +753,22 @@ class CalculateMoveVector:
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
             return move_vector 
-                   
+        
+        def conjugate_gradient_descent(geom_num_list, pre_move_vector, new_g, pre_g):
+            #cg method
+            
+            alpha = np.dot(new_g.reshape(1, len(geom_num_list)*3), (self.Opt_params.adam_v).reshape(len(geom_num_list)*3, 1)) / np.dot(self.Opt_params.adam_v.reshape(1, len(geom_num_list)*3), self.Opt_params.adam_v.reshape(len(geom_num_list)*3, 1))
+            
+            move_vector = self.DELTA * alpha * self.Opt_params.adam_v
+            
+            beta = np.dot(new_g.reshape(1, len(geom_num_list)*3), (new_g - pre_g).reshape(len(geom_num_list)*3, 1)) / np.dot(pre_g.reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) ** 2 
+            
+            self.Opt_params.adam_v = copy.copy(-1 * new_g + abs(beta) * self.Opt_params.adam_v)
+            
+            
+            
+            return move_vector
+        
         #arXiv:1412.6980v9
         def AdaMax(geom_num_list, new_g):#not worked well
             print("AdaMax")
@@ -1306,8 +1320,15 @@ class CalculateMoveVector:
             elif opt_method == "third_order_momentum_Adam":
                 tmp_move_vector = third_order_momentum_Adam(geom_num_list, new_g)
                 move_vector_list.append(tmp_move_vector)
-
-            
+                
+            elif opt_method == "CG":
+                if iter != 0:
+                    tmp_move_vector = conjugate_gradient_descent(geom_num_list, pre_move_vector, new_g, pre_g)
+                    move_vector_list.append(tmp_move_vector)
+                else:
+                    self.Opt_params.adam_v = copy.copy(-1 * new_g)
+                    tmp_move_vector = 0.01*new_g
+                    move_vector_list.append(tmp_move_vector)
             
             # group of quasi-Newton method
             
@@ -1409,7 +1430,8 @@ class CalculateMoveVector:
         
         move_vector += perturbation
         print("perturbation: ", np.linalg.norm(perturbation))
-        
+        if np.linalg.norm(move_vector) > 1.0:
+            move_vector = 1.0 * move_vector/np.linalg.norm(move_vector)
         print("step radii: ", np.linalg.norm(move_vector))
         
         hess_eigenvalue, _ = np.linalg.eig(self.Model_hess.model_hess)
@@ -2332,7 +2354,93 @@ class BiasPotentialCalculation:
             
             return hessian
         
+        def calc_well_potential(coord1, coord2, wall_ene, wall_dists):
+            vec_norm = np.linalg.norm(coord1 - coord2) 
+            a = float(wall_dists[0]) / self.bohr2angstroms
+            b = float(wall_dists[1]) / self.bohr2angstroms
+            c = float(wall_dists[2]) / self.bohr2angstroms
+            d = float(wall_dists[3]) / self.bohr2angstroms
+            short_dist_linear_func_slope = 0.5 / (b - a)
+            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+            long_dist_linear_func_slope = 0.5 / (c - d)
+            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
 
+            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+
+            if vec_norm <= a:
+                energy = (wall_ene / self.hartree2kjmol) * (-3.75 * x_short + 2.875)
+                
+            elif a < vec_norm and vec_norm <= b:
+                energy = (wall_ene / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5)
+                 
+            elif b < vec_norm and vec_norm < c:
+                energy = 0.0
+                
+            elif c <= vec_norm and vec_norm < d:
+                energy = (wall_ene / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5)
+                
+            elif d <= vec_norm:
+                energy = (wall_ene / self.hartree2kjmol) * (-3.75 * x_long + 2.875)
+                
+            else:
+                print("well pot error")
+                raise "well pot error"
+            print(energy)
+            return energy
+        
+        def calc_well_potential_grad(coord1, coord2, wall_ene, wall_dists):
+            vec_norm = np.linalg.norm(coord1 - coord2) 
+            a = float(wall_dists[0]) / self.bohr2angstroms
+            b = float(wall_dists[1]) / self.bohr2angstroms
+            c = float(wall_dists[2]) / self.bohr2angstroms
+            d = float(wall_dists[3]) / self.bohr2angstroms
+            short_dist_linear_func_slope = 0.5 / (b - a)
+            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+            long_dist_linear_func_slope = 0.5 / (c - d)
+            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
+
+            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+
+            if vec_norm <= a:
+                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (-3.75) * (0.5 / (c - d)) #d_ene_per_dx_short * dx_short_per_d_vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
+                
+            elif a < vec_norm and vec_norm <= b:
+                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (- 60.0 * x_short ** 2 + 120.0 * x_short ** 3 - 60 * x_short ** 4) * (0.5 / (c - d)) #d_ene_per_dx_short * dx_short_per_d_vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
+                
+            elif b < vec_norm and vec_norm < c:
+                grad_1, grad_2 = np.array([0.0, 0.0, 0.0], dtype="float64"), np.array([0.0, 0.0, 0.0], dtype="float64")
+                
+            elif c <= vec_norm and vec_norm < d:
+                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (- 60.0 * x_long ** 2 + 120.0 * x_long ** 3 - 60 * x_long ** 4) * (0.5 / (b - a)) #d_ene_per_dx_long * dx_long_per_d_vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
+                
+            elif d <= vec_norm:
+                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (-3.75) * (0.5 / (b - a)) #d_ene_per_dx_long * dx_long_per_d_vec_norm
+                grad_x = d_ene_per_d_vec_norm * (coord1[0] - coord2[0]) / vec_norm
+                grad_y = d_ene_per_d_vec_norm * (coord1[1] - coord2[1]) / vec_norm
+                grad_z = d_ene_per_d_vec_norm * (coord1[2] - coord2[2]) / vec_norm
+                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
+                
+            else:
+                print("well grad error")
+                raise "well grad error"
+            grad_1, grad_2 = -grad_1, -grad_2
+            print(grad_1, grad_2)
+            return grad_1, grad_2
+        
         
             
         #--------------------------------------------------
@@ -2356,14 +2464,14 @@ class BiasPotentialCalculation:
                 pass
         
         
-        
+        #------------------
         if force_data["gaussian_pot_energy"] != 0.0:
             AFIR_e += calc_gaussian_pot(geom_num_list, force_data["gaussian_pot_energy"], initial_geom_num_list)
             BPA_grad_list += calc_gaussian_pot_grad(geom_num_list, force_data["gaussian_pot_energy"], initial_geom_num_list)
         else:
             pass
         
-        
+        #------------------
         for i in range(len(force_data["repulsive_potential_dist_scale"])):
             if force_data["repulsive_potential_well_scale"][i] != 0.0:
                 AFIR_e += calc_LJ_Repulsive_pot(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
@@ -2376,7 +2484,7 @@ class BiasPotentialCalculation:
                     BPA_hessian = calc_LJ_Repulsive_pot_hess(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list, BPA_hessian)
             else:
                 pass
-        
+        #------------------
         for i in range(len(force_data["keep_pot_spring_const"])):
             if force_data["keep_pot_spring_const"][i] != 0.0:
                 AFIR_e += calc_keep_potential(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
@@ -2391,7 +2499,7 @@ class BiasPotentialCalculation:
                     BPA_hessian = calc_keep_potential_hess(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i], force_data["keep_pot_atom_pairs"][i][0], force_data["keep_pot_atom_pairs"][i][1], BPA_hessian)
             else:
                 pass
-                
+        #------------------        
         for i in range(len(force_data["anharmonic_keep_pot_spring_const"])):
             if force_data["anharmonic_keep_pot_potential_well_depth"][i] != 0.0:
                 AFIR_e += calc_anharmonic_keep_potential(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
@@ -2408,8 +2516,21 @@ class BiasPotentialCalculation:
                     BPA_hessian = calc_anharmonic_keep_potential_hess(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i], force_data["anharmonic_keep_pot_atom_pairs"][i][0], force_data["anharmonic_keep_pot_atom_pairs"][i][1], BPA_hessian)
             else:
                 pass
-            
-            
+        #------------------
+        
+
+    
+        for i in range(len(force_data["well_pot_wall_energy"])):
+            if force_data["well_pot_wall_energy"][i] != 0.0:
+                AFIR_e += calc_well_potential(geom_num_list[force_data["well_pot_atom_pair"][i][0]-1], geom_num_list[force_data["well_pot_atom_pair"][i][1]-1], force_data["well_pot_wall_energy"][i], force_data["well_pot_limit_dist"][i])
+                
+                
+                grad_1, grad_2 = calc_well_potential_grad(geom_num_list[force_data["well_pot_atom_pair"][i][0]-1], geom_num_list[force_data["well_pot_atom_pair"][i][1]-1], force_data["well_pot_wall_energy"][i], force_data["well_pot_limit_dist"][i])
+                
+                BPA_grad_list[force_data["well_pot_atom_pair"][i][0]-1] += grad_1
+                BPA_grad_list[force_data["well_pot_atom_pair"][i][1]-1] += grad_2
+                
+        #------------------        
         if len(geom_num_list) > 2:
             for i in range(len(force_data["keep_angle_spring_const"])):
                 if force_data["keep_angle_spring_const"][i] != 0.0:
@@ -2429,7 +2550,7 @@ class BiasPotentialCalculation:
         else:
             pass
         
-        
+        #------------------
         if len(geom_num_list) > 3:
             for i in range(len(force_data["keep_dihedral_angle_spring_const"])):
                 if force_data["keep_dihedral_angle_spring_const"][i] != 0.0:
@@ -2450,7 +2571,7 @@ class BiasPotentialCalculation:
         else:
             pass
 
-        
+        #------------------
         for i in range(len(force_data["void_point_pot_spring_const"])):
             if force_data["void_point_pot_spring_const"][i] != 0.0:
                 for j in force_data["void_point_pot_atoms"][i]:
@@ -2465,6 +2586,7 @@ class BiasPotentialCalculation:
             else:
                 pass
         
+        #------------------
         for i in range(len(force_data["AFIR_gamma"])):
             if force_data["AFIR_gamma"][i] != 0.0:
                 AFIR_e += calc_AFIR_pot(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
@@ -2476,7 +2598,7 @@ class BiasPotentialCalculation:
                     BPA_hessian = calc_AFIR_hess(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list, BPA_hessian)
             else:
                 pass
-                
+        #------------------        
         new_g = g + BPA_grad_list
 
         
@@ -2539,6 +2661,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 args.DELTA = 0.01
             elif args.opt_method[0] == "AdaMax":
                 args.DELTA = 0.01
+            elif  args.opt_method[0] == "CG":
+                args.DELTA = 1.0
                 
             elif args.opt_method[0] == "TRM_FSB":
                 args.DELTA = 0.60
@@ -2773,7 +2897,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
 
 
     def tblite_calculation(self, file_directory, element_number_list, electric_charge_and_multiplicity, iter, method):
-        """execute QM calclation."""
+        """execute extended tight binding method calclation."""
         gradient_list = []
         energy_list = []
         geometry_num_list = []
@@ -2797,6 +2921,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     
                 positions = np.array(positions, dtype="float64") / self.bohr2angstroms
                 calc = Calculator(method, element_number_list, positions)
+                calc.set("max-iter", 500)
+                calc.set("verbosity", 1)
                 res = calc.singlepoint()
                 e = float(res.get("energy"))  #hartree
                 g = res.get("gradient") #hartree/Bohr
@@ -2835,7 +2961,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     sub_list.append(int(sub))    
             return sub_list
         force_data = {}
-       
+        #---------------------
         if len(args.repulsive_potential) % 4 != 0:
             print("invaild input (-rp)")
             sys.exit(0)
@@ -2851,9 +2977,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["repulsive_potential_Fragm_1"].append(num_parse(args.repulsive_potential[4*i+2]))
             force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[4*i+3]))
         
-        """
-        parser.add_argument("-rpv2", "--repulsive_potential_v2", nargs="*",  type=str, default=['0.0','1.0','0.0','1','2','12','6' '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.2) (ex.) [[well_scale] [dist_scale] [length] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
-        """
+
+        #---------------------
         if len(args.repulsive_potential_v2) % 9 != 0:
             print("invaild input (-rpv2)")
             sys.exit(0)
@@ -2879,7 +3004,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[9*i+7]))
             force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[9*i+8]))
 
-        
+        #---------------------
         if len(args.manual_AFIR) % 3 != 0:
             print("invaild input (-ma)")
             sys.exit(0)
@@ -2895,7 +3020,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["AFIR_Fragm_2"].append(num_parse(args.manual_AFIR[3*i+2]))
         
         
-        
+        #---------------------
         if len(args.anharmonic_keep_pot) % 4 != 0:
             print("invaild input (-akp)")
             sys.exit(0)
@@ -2910,7 +3035,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["anharmonic_keep_pot_spring_const"].append(float(args.anharmonic_keep_pot[4*i+1]))#au
             force_data["anharmonic_keep_pot_distance"].append(float(args.anharmonic_keep_pot[4*i+2]))#ang
             force_data["anharmonic_keep_pot_atom_pairs"].append(num_parse(args.anharmonic_keep_pot[4*i+3]))
-        
+        #---------------------
         if len(args.keep_pot) % 3 != 0:
             print("invaild input (-kp)")
             sys.exit(0)
@@ -2923,7 +3048,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["keep_pot_spring_const"].append(float(args.keep_pot[3*i]))#au
             force_data["keep_pot_distance"].append(float(args.keep_pot[3*i+1]))#ang
             force_data["keep_pot_atom_pairs"].append(num_parse(args.keep_pot[3*i+2]))
-        
+        #---------------------
         if len(args.keep_angle) % 3 != 0:
             print("invaild input (-ka)")
             sys.exit(0)
@@ -2936,7 +3061,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["keep_angle_spring_const"].append(float(args.keep_angle[3*i]))#au
             force_data["keep_angle_angle"].append(float(args.keep_angle[3*i+1]))#degrees
             force_data["keep_angle_atom_pairs"].append(num_parse(args.keep_angle[3*i+2]))
-        
+        #---------------------
         if len(args.keep_dihedral_angle) % 3 != 0:
             print("invaild input (-kda)")
             sys.exit(0)
@@ -2950,7 +3075,26 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["keep_dihedral_angle_angle"].append(float(args.keep_dihedral_angle[3*i+1]))#degrees
             force_data["keep_dihedral_angle_atom_pairs"].append(num_parse(args.keep_dihedral_angle[3*i+2]))
         
+        #---------------------
+        if len(args.well_pot) % 3 != 0:
+            print("invaild input (-wp)")
+            sys.exit(0)
+            
+        force_data["well_pot_wall_energy"] = []
+        force_data["well_pot_atom_pair"] = []
+        force_data["well_pot_limit_dist"] = []
         
+        for i in range(int(len(args.well_pot)/3)):
+            force_data["well_pot_wall_energy"].append(float(args.well_pot[3*i]))#kJ/mol
+            force_data["well_pot_atom_pair"].append(num_parse(args.well_pot[3*i+1]))
+            force_data["well_pot_limit_dist"].append(args.well_pot[3*i+2].split(","))#ang
+            if float(force_data["well_pot_limit_dist"][i][0]) < float(force_data["well_pot_limit_dist"][i][1]) and float(force_data["well_pot_limit_dist"][i][1]) < float(force_data["well_pot_limit_dist"][i][2]) and float(force_data["well_pot_limit_dist"][i][2]) < float(force_data["well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-wp a<b<c<d)")
+                sys.exit(0)
+                
+        #---------------------
         if len(args.void_point_pot) % 5 != 0:
             print("invaild input (-vpp)")
             sys.exit(0)
@@ -2968,7 +3112,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["void_point_pot_coord"].append(list(map(float, coord)))#ang
             force_data["void_point_pot_atoms"].append(num_parse(args.void_point_pot[5*i+3]))
             force_data["void_point_pot_order"].append(float(args.void_point_pot[5*i+4]))
-        
+        #---------------------
         if len(args.gaussian_pot) > 1:
             print("invaild input (-gp)")
             sys.exit(0)
@@ -3038,7 +3182,10 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     exit_flag = True
                     break
             if exit_flag:
-                psi4.core.clean()
+                try:
+                    psi4.core.clean()
+                except:
+                    pass
                 break
             print("\n# ITR. "+str(iter)+"\n")
             #---------------------------------------
@@ -3075,9 +3222,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             _, AFIR_e, new_g = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_g, iter, initial_geom_num_list)#new_geometry:ang.
             self.Model_hess = CalcBiaspot.Model_hess
             #----------------------------
-            if len(force_data["fix_atoms"]) > 0:
-                for j in force_data["fix_atoms"]:
-                    new_g[j-1] = copy.deepcopy(new_g[j-1]*self.bohr2angstroms*0.0)
+
             #----------------------------
             
             CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, self.FC_COUNT, self.temperature)
@@ -3108,7 +3253,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             print("\ngeometry:")
             if len(force_data["fix_atoms"]) > 0:
                 for j in force_data["fix_atoms"]:
-                    new_geometry[j-1] = copy.deepcopy(initial_geom_num_list[j-1]*self.bohr2angstroms)
+                    new_geometry[j-1] = copy.copy(initial_geom_num_list[j-1]*self.bohr2angstroms)
+                    
             #----------------------------
             
             pre_AFIR_e = AFIR_e#Hartree
