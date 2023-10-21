@@ -2386,7 +2386,7 @@ class BiasPotentialCalculation:
             else:
                 print("well pot error")
                 raise "well pot error"
-            print(energy)
+            #print(energy)
             return energy
         
         def calc_well_potential_grad(coord1, coord2, wall_ene, wall_dists):
@@ -2418,6 +2418,7 @@ class BiasPotentialCalculation:
                 grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
                 
             elif b < vec_norm and vec_norm < c:
+                d_ene_per_d_vec_norm = 0.0
                 grad_1, grad_2 = np.array([0.0, 0.0, 0.0], dtype="float64"), np.array([0.0, 0.0, 0.0], dtype="float64")
                 
             elif c <= vec_norm and vec_norm < d:
@@ -2438,7 +2439,8 @@ class BiasPotentialCalculation:
                 print("well grad error")
                 raise "well grad error"
             grad_1, grad_2 = -grad_1, -grad_2
-            print(grad_1, grad_2)
+            #print(-d_ene_per_d_vec_norm)
+            #print(grad_1, grad_2)
             return grad_1, grad_2
         
         
@@ -3003,7 +3005,10 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["repulsive_potential_v2_order_attr"].append(float(args.repulsive_potential_v2[9*i+6]))
             force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[9*i+7]))
             force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[9*i+8]))
-
+            if len(force_data["repulsive_potential_v2_center"][i]) != 2:
+                print("invaild input (-rpv2 center)")
+                sys.exit(0)
+                
         #---------------------
         if len(args.manual_AFIR) % 3 != 0:
             print("invaild input (-ma)")
@@ -3035,6 +3040,10 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["anharmonic_keep_pot_spring_const"].append(float(args.anharmonic_keep_pot[4*i+1]))#au
             force_data["anharmonic_keep_pot_distance"].append(float(args.anharmonic_keep_pot[4*i+2]))#ang
             force_data["anharmonic_keep_pot_atom_pairs"].append(num_parse(args.anharmonic_keep_pot[4*i+3]))
+            if len(force_data["anharmonic_keep_pot_atom_pairs"][i]) != 2:
+                print("invaild input (-akp atom_pairs)")
+                sys.exit(0)
+            
         #---------------------
         if len(args.keep_pot) % 3 != 0:
             print("invaild input (-kp)")
@@ -3048,6 +3057,10 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["keep_pot_spring_const"].append(float(args.keep_pot[3*i]))#au
             force_data["keep_pot_distance"].append(float(args.keep_pot[3*i+1]))#ang
             force_data["keep_pot_atom_pairs"].append(num_parse(args.keep_pot[3*i+2]))
+            if len(force_data["keep_pot_atom_pairs"][i]) != 2:
+                print("invaild input (-kp atom_pairs)")
+                sys.exit(0)
+            
         #---------------------
         if len(args.keep_angle) % 3 != 0:
             print("invaild input (-ka)")
@@ -3061,6 +3074,9 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["keep_angle_spring_const"].append(float(args.keep_angle[3*i]))#au
             force_data["keep_angle_angle"].append(float(args.keep_angle[3*i+1]))#degrees
             force_data["keep_angle_atom_pairs"].append(num_parse(args.keep_angle[3*i+2]))
+            if len(force_data["keep_angle_atom_pairs"][i]) != 3:
+                print("invaild input (-ka atom_pairs)")
+                sys.exit(0)
         #---------------------
         if len(args.keep_dihedral_angle) % 3 != 0:
             print("invaild input (-kda)")
@@ -3074,6 +3090,9 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["keep_dihedral_angle_spring_const"].append(float(args.keep_dihedral_angle[3*i]))#au
             force_data["keep_dihedral_angle_angle"].append(float(args.keep_dihedral_angle[3*i+1]))#degrees
             force_data["keep_dihedral_angle_atom_pairs"].append(num_parse(args.keep_dihedral_angle[3*i+2]))
+            if len(force_data["keep_dihedral_angle_atom_pairs"][i]) != 4:
+                print("invaild input (-kda atom_pairs)")
+                sys.exit(0)
         
         #---------------------
         if len(args.well_pot) % 3 != 0:
@@ -3087,6 +3106,11 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         for i in range(int(len(args.well_pot)/3)):
             force_data["well_pot_wall_energy"].append(float(args.well_pot[3*i]))#kJ/mol
             force_data["well_pot_atom_pair"].append(num_parse(args.well_pot[3*i+1]))
+            
+            if len(force_data["well_pot_atom_pair"][i]) != 2:
+                print("invaild input (-wp atom_pairs)")
+                sys.exit(0)
+            
             force_data["well_pot_limit_dist"].append(args.well_pot[3*i+2].split(","))#ang
             if float(force_data["well_pot_limit_dist"][i][0]) < float(force_data["well_pot_limit_dist"][i][1]) and float(force_data["well_pot_limit_dist"][i][1]) < float(force_data["well_pot_limit_dist"][i][2]) and float(force_data["well_pot_limit_dist"][i][2]) < float(force_data["well_pot_limit_dist"][i][3]):
                 pass
