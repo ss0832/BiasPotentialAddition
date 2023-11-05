@@ -134,13 +134,25 @@ class Interface:
 
 
 def UFF_VDW_distance_lib(element):
-    UFF_VDW_distance = {'H':2.886,'He':2.362 ,'Li' : 2.451 ,'Be': 2.745, 'B':4.083 ,'C': 3.851, 'N':3.660,'O':3.500 , 'F':3.364,'Ne': 3.243, 'Na':2.983,'Mg': 3.021 ,'Al':4.499 ,'Si': 4.295, 'P':4.147, 'S':4.035 ,'Cl':3.947,'Ar':3.868 ,'K':3.812 ,'Ca':3.399 ,'Sc':3.295 ,'Ti':3.175 ,'V': 3.144, 'Cr':3.023 ,'Mn': 2.961, 'Fe': 2.912,'Co':2.872 ,'Ni':2.834 ,'Cu':3.495 ,'Zn':2.763 ,'Ga': 4.383,'Ge':4.280,'As':4.230 ,'Se':4.205,'Br':4.189,'Kr':4.141 ,'Rb':4.114 ,'Sr': 3.641,'Y':3.345 ,'Zr':3.124 ,'Nb':3.165 ,'Mo':3.052 ,'Tc':2.998 ,'Ru':2.963 ,'Rh':2.929 ,'Pd':2.899 ,'Ag':3.148 ,'Cd':2.848 ,'In':4.463 ,'Sn':4.392 ,'Sb':4.420 ,'Te':4.470 , 'I':4.50, 'Xe':4.404 , 'Cs':4.517 ,'Ba':3.703 , 'La':3.522 , 'Ce':3.556 ,'Pr':3.606 ,'Nd':3.575 ,'Pm':3.547 ,'Sm':3.520 ,'Eu':3.493 ,'Gd':3.368 ,'Tb':3.451 ,'Dy':3.428 ,'Ho':3.409 ,'Er':3.391 ,'Tm':3.374 ,'Yb':3.355,'Lu':3.640 ,'Hf': 3.141,'Ta':3.170 ,'W':3.069 ,'Re':2.954 ,'Os':3.120 ,'Ir':2.840 ,'Pt':2.754 ,'Au':3.293 ,'Hg':2.705 ,'Tl':4.347 ,'Pb':4.297 ,'Bi':4.370 ,'Po':4.709 ,'At':4.750 ,'Rn': 4.765}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 #ang.
+    UFF_VDW_distance = {'H':2.886,'He':2.362 ,
+                        'Li' : 2.451 ,'Be': 2.745, 'B':4.083 ,'C': 3.851, 'N':3.660,'O':3.500 , 'F':3.364,'Ne': 3.243, 
+                        'Na':2.983,'Mg': 3.021 ,'Al':4.499 ,'Si': 4.295, 'P':4.147, 'S':4.035 ,'Cl':3.947,'Ar':3.868 ,
+                        'K':3.812 ,'Ca':3.399 ,'Sc':3.295 ,'Ti':3.175 ,'V': 3.144, 'Cr':3.023 ,'Mn': 2.961, 'Fe': 2.912,'Co':2.872 ,'Ni':2.834 ,'Cu':3.495 ,'Zn':2.763 ,'Ga': 4.383,'Ge':4.280,'As':4.230 ,'Se':4.205,'Br':4.189,'Kr':4.141 ,
+                        'Rb':4.114 ,'Sr': 3.641,'Y':3.345 ,'Zr':3.124 ,'Nb':3.165 ,'Mo':3.052 ,'Tc':2.998 ,'Ru':2.963 ,'Rh':2.929 ,'Pd':2.899 ,'Ag':3.148 ,'Cd':2.848 ,'In':4.463 ,'Sn':4.392 ,'Sb':4.420 ,'Te':4.470 , 'I':4.50, 'Xe':4.404 , 
+                        'Cs':4.517 ,'Ba':3.703 , 'La':3.522 , 'Ce':3.556 ,'Pr':3.606 ,'Nd':3.575 ,'Pm':3.547 ,'Sm':3.520 ,'Eu':3.493 ,'Gd':3.368 ,'Tb':3.451 ,'Dy':3.428 ,'Ho':3.409 ,'Er':3.391 ,'Tm':3.374 ,'Yb':3.355,'Lu':3.640 ,'Hf': 3.141,
+                        'Ta':3.170 ,'W':3.069 ,'Re':2.954 ,'Os':3.120 ,'Ir':2.840 ,'Pt':2.754 ,'Au':3.293 ,'Hg':2.705 ,'Tl':4.347 ,'Pb':4.297 ,'Bi':4.370 ,'Po':4.709 ,'At':4.750 ,'Rn': 4.765}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 #ang.
                 
     return UFF_VDW_distance[element] / UnitValueLib().bohr2angstroms#Bohr
 
 def UFF_VDW_well_depth_lib(element):
                 
-    UFF_VDW_well_depth = {'H':0.044, 'He':0.056 ,'Li':0.025 ,'Be':0.085 ,'B':0.180,'C': 0.105, 'N':0.069, 'O':0.060,'F':0.050,'Ne':0.042 , 'Na':0.030, 'Mg':0.111 ,'Al':0.505 ,'Si': 0.402, 'P':0.305, 'S':0.274, 'Cl':0.227,  'Ar':0.185 ,'K':0.035 ,'Ca':0.238 ,'Sc':0.019 ,'Ti':0.017 ,'V':0.016 , 'Cr':0.015, 'Mn':0.013 ,'Fe': 0.013,'Co':0.014 ,'Ni':0.015 ,'Cu':0.005 ,'Zn':0.124 ,'Ga':0.415 ,'Ge':0.379, 'As':0.309 ,'Se':0.291,'Br':0.251,'Kr':0.220 ,'Rb':0.04 ,'Sr':0.235 ,'Y':0.072 ,'Zr':0.069 ,'Nb':0.059 ,'Mo':0.056 ,'Tc':0.048 ,'Ru':0.056 ,'Rh':0.053 ,'Pd':0.048 ,'Ag':0.036 ,'Cd':0.228 ,'In':0.599 ,'Sn':0.567 ,'Sb':0.449 ,'Te':0.398 , 'I':0.339,'Xe':0.332 , 'Cs':0.045 ,'Ba':0.364 , 'La':0.017 , 'Ce':0.013 ,'Pr':0.010 ,'Nd':0.010 ,'Pm':0.009 ,'Sm':0.008 ,'Eu':0.008 ,'Gd':0.009 ,'Tb':0.007 ,'Dy':0.007 ,'Ho':0.007 ,'Er':0.007 ,'Tm':0.006 ,'Yb':0.228 ,'Lu':0.041 ,'Hf':0.072 ,'Ta':0.081 ,'W':0.067 ,'Re':0.066 ,'Os':0.037 ,'Ir':0.073 ,'Pt':0.080 ,'Au':0.039 ,'Hg':0.385 ,'Tl':0.680 ,'Pb':0.663 ,'Bi':0.518 ,'Po':0.325 ,'At':0.284 ,'Rn':0.248, 'X':0.010}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 # kcal/mol
+    UFF_VDW_well_depth = {'H':0.044, 'He':0.056 ,
+                          'Li':0.025 ,'Be':0.085 ,'B':0.180,'C': 0.105, 'N':0.069, 'O':0.060,'F':0.050,'Ne':0.042 , 
+                          'Na':0.030, 'Mg':0.111 ,'Al':0.505 ,'Si': 0.402, 'P':0.305, 'S':0.274, 'Cl':0.227,  'Ar':0.185 ,
+                          'K':0.035 ,'Ca':0.238 ,'Sc':0.019 ,'Ti':0.017 ,'V':0.016 , 'Cr':0.015, 'Mn':0.013 ,'Fe': 0.013,'Co':0.014 ,'Ni':0.015 ,'Cu':0.005 ,'Zn':0.124 ,'Ga':0.415 ,'Ge':0.379, 'As':0.309 ,'Se':0.291,'Br':0.251,'Kr':0.220 ,
+                          'Rb':0.04 ,'Sr':0.235 ,'Y':0.072 ,'Zr':0.069 ,'Nb':0.059 ,'Mo':0.056 ,'Tc':0.048 ,'Ru':0.056 ,'Rh':0.053 ,'Pd':0.048 ,'Ag':0.036 ,'Cd':0.228 ,'In':0.599 ,'Sn':0.567 ,'Sb':0.449 ,'Te':0.398 , 'I':0.339,'Xe':0.332 , 
+                          'Cs':0.045 ,'Ba':0.364 , 'La':0.017 , 'Ce':0.013 ,'Pr':0.010 ,'Nd':0.010 ,'Pm':0.009 ,'Sm':0.008 ,'Eu':0.008 ,'Gd':0.009 ,'Tb':0.007 ,'Dy':0.007 ,'Ho':0.007 ,'Er':0.007 ,'Tm':0.006 ,'Yb':0.228 ,'Lu':0.041 ,'Hf':0.072 ,
+                          'Ta':0.081 ,'W':0.067 ,'Re':0.066 ,'Os':0.037 ,'Ir':0.073 ,'Pt':0.080 ,'Au':0.039 ,'Hg':0.385 ,'Tl':0.680 ,'Pb':0.663 ,'Bi':0.518 ,'Po':0.325 ,'At':0.284 ,'Rn':0.248, 'X':0.010}#H...Rn J. Am. Chem. Soc., 1992, 114, 10024 # kcal/mol
                 
     return UFF_VDW_well_depth[element] / UnitValueLib().hartree2kcalmol
                 
@@ -161,6 +173,18 @@ def element_number(elem):
     return num[elem]
 
 
+def atomic_mass(elem):
+    elem_num = element_number(elem)
+    mass = {1: 1.00782503223, 2: 4.00260325413,
+    3: 7.0160034366, 4: 9.012183065, 5: 11.00930536, 6: 12.0, 7: 14.00307400443, 8: 15.99491461957, 9: 18.99840316273, 10: 19.9924401762,
+    11: 22.989769282, 12: 23.985041697, 13: 26.98153853, 14: 27.97692653465, 15: 30.97376199842, 16: 31.9720711744, 17: 34.968852682, 18: 39.9623831237,
+    19: 38.9637064864, 20: 39.962590863, 21: 44.95590828, 22: 47.94794198, 23: 50.94395704, 24: 51.94050623, 25: 54.93804391, 26: 55.93493633, 27: 58.93319429, 28: 57.93534241, 29: 62.92959772, 30: 63.92914201, 31: 68.9255735, 32: 73.921177761, 33: 74.92159457, 34: 79.9165218, 35: 78.9183376, 36: 83.9114977282,
+    37: 84.9117897379, 38: 87.9056125, 39: 88.9058403, 40: 89.9046977, 41: 92.906373, 42: 97.90540482, 43: 96.9063667, 44: 101.9043441, 45: 102.905498, 46: 105.9034804, 47: 106.9050916, 48: 113.90336509, 49: 114.903878776, 50: 119.90220163, 51: 120.903812, 52: 129.906222748, 53: 126.9044719, 54: 131.9041550856,
+    55: 132.905451961, 56: 137.905247, 57: 138.9063563, 58: 139.9054431, 59: 140.9076576, 60: 141.907729, 61: 144.9127559, 62: 151.9197397, 63: 152.921238, 64: 157.9241123, 65: 158.9253547, 66: 163.9291819, 67: 164.9303288,
+    68: 165.9302995, 69: 168.9342179, 70: 173.9388664, 71: 174.9407752, 72: 179.946557, 73: 180.9479958, 74: 183.95093092, 75: 186.9557501, 76: 191.961477, 77: 192.9629216, 78: 194.9647917, 79: 196.96656879, 80: 201.9706434, 81: 204.9744278,
+    82: 207.9766525, 83: 208.9803991, 84: 208.9824308, 85: 209.9871479, 86: 222.0175782}# https://www.nist.gov/pml/atomic-weights-and-isotopic-compositions-relative-atomic-masses
+    return mass[elem_num]
+
 
 class UnitValueLib: 
     def __init__(self):
@@ -168,6 +192,8 @@ class UnitValueLib:
         self.bohr2angstroms = 0.52917721067 #
         self.hartree2kjmol = 2625.500 #
         return
+
+
 
 class CalculateMoveVector:
     def __init__(self, DELTA, Opt_params, Model_hess, FC_COUNT=-1, temperature=0.0):
@@ -184,7 +210,7 @@ class CalculateMoveVector:
         self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
         self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
         
-    def calc_move_vector(self, iter, geom_num_list, new_g, opt_method_list, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):
+    def calc_move_vector(self, iter, geom_num_list, new_g, opt_method_list, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):#geom_num_list:Bohr
         def update_trust_radii(trust_radii, dE, dE_predicted, displacement):
             if dE != 0:
                 r =  dE_predicted / dE
@@ -327,11 +353,6 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
                 return move_vector
                 
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
 
             
             A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
@@ -380,11 +401,7 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
                
                 return move_vector
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
+
             
           
             A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
@@ -423,11 +440,7 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
                 return move_vector
                 
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
+
 
 
             A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
@@ -472,11 +485,7 @@ class CalculateMoveVector:
                 move_vector = 0.1*(new_g/np.linalg.norm(new_g))
                 print("displacement is too large!!")
                 return move_vector
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
+
             
    
             A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
@@ -527,11 +536,7 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
                 
                 return move_vector
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
+
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
             
@@ -583,11 +588,7 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
               
                 return move_vector
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
+
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
             
@@ -643,11 +644,7 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
                 
                 return move_vector
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ", np.nanmean(displacement))
-                return move_vector
+
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
             
@@ -706,11 +703,7 @@ class CalculateMoveVector:
                 print("displacement is too large!!")
               
                 return move_vector
-            if abs(np.nanmean(displacement)) < 1e-06:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
-                print("displacement is too small!!")
-                print("disp. avg.: ",np.nanmean(displacement))
-                return move_vector
+
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
             
@@ -1452,8 +1445,9 @@ class BiasPotentialCalculation:
         self.Model_hess = Model_hess
         self.FC_COUNT = FC_COUNT
         
-    def main(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, initial_geom_num_list):
+    def main(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, GeoInfo):
         numerical_derivative_delta = 0.0001 #unit:Bohr
+        initial_geom_num_list = GeoInfo.geometry_list[0]
         #g:hartree/Bohr
         #e:hartree
         #geom_num_list:Bohr
@@ -1657,7 +1651,7 @@ class BiasPotentialCalculation:
             
             return grad
         
-        
+       
         def calc_AFIR_hess(geom_num_list, gamma, fragm_1, fragm_2, element_list, hessian):
             R_0 = 3.8164/self.bohr2angstroms #ang.→bohr
             EPSIRON = 1.0061/self.hartree2kjmol #kj/mol→hartree
@@ -1792,7 +1786,7 @@ class BiasPotentialCalculation:
             
             hessian = hessian + np.array(tmp_hess, dtype="float64")
             return hessian
-              
+                     
         def calc_keep_potential(coord1, coord2, spring_const, keep_dist):
             vector = np.linalg.norm((coord1 - coord2), ord=2)
             energy = 0.5 * spring_const * (vector - keep_dist/self.bohr2angstroms) ** 2
@@ -2068,6 +2062,188 @@ class BiasPotentialCalculation:
 
             return grad_1, grad_2, grad_3 #hartree/Bohr
 
+
+        def calc_keep_angle_hess(coord1, coord2, coord3, spring_const, keep_angle, coord1_num, coord2_num, coord3_num, hessian):#not implemented
+            
+            vector = np.linalg.norm((coord1 - coord2), ord=2)
+            
+            tmp_hess = (hessian*0.0)
+            
+            hessian_x1x1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
+            hessian_x1y1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[1] - coord2[1])
+            hessian_x1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[2] - coord2[2])
+            hessian_x1x2 = -1 * hessian_x1x1
+            hessian_x1y2 = -1 * hessian_x1y1
+            hessian_x1z2 = -1 * hessian_x1z1
+            
+            hessian_y1x1 = hessian_x1y1
+            hessian_y1y1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
+            hessian_y1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) * (coord1[2] - coord2[2])
+            hessian_y1x2 = -1 * hessian_y1x1
+            hessian_y1y2 = -1 * hessian_y1y1
+            hessian_y1z2 = -1 * hessian_y1z1
+            
+            hessian_z1x1 = hessian_x1z1
+            hessian_z1y1 = hessian_y1z1
+            hessian_z1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[2] - coord2[2]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
+            hessian_z1x2 = -1 * hessian_z1x1
+            hessian_z1y2 = -1 * hessian_z1y1
+            hessian_z1z2 = -1 * hessian_z1z1 
+            
+            hessian_x2x1 = hessian_x1x2
+            hessian_x2y1 = hessian_y1x2
+            hessian_x2z1 = hessian_z1x2
+            hessian_x2x2 = -1 * hessian_x2x1
+            hessian_x2y2 = -1 * hessian_x2y1
+            hessian_x2z2 = -1 * hessian_x2z1
+
+            hessian_y2x1 = hessian_x1y2
+            hessian_y2y1 = hessian_y1y2
+            hessian_y2z1 = hessian_z1y2
+            hessian_y2x2 = -1 * hessian_y2x1
+            hessian_y2y2 = -1 * hessian_y2y1
+            hessian_y2z2 = -1 * hessian_y2z1
+            
+            hessian_z2x1 = hessian_x1z2
+            hessian_z2y1 = hessian_y1z2
+            hessian_z2z1 = hessian_z1z2
+            hessian_z2x2 = -1 * hessian_z2x1
+            hessian_z2y2 = -1 * hessian_z2y1
+            hessian_z2z2 = -1 * hessian_z2z1
+
+            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x1x1)
+            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x1y1)
+            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x1z1)
+            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x1x2)
+            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x1y2)
+            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x1z2)
+            
+            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y1x1)
+            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y1y1)
+            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y1z1)
+            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y1x2)
+            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y1y2)
+            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y1z2)
+            
+            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z1x1)
+            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z1y1)
+            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z1z1)
+            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z1x2)
+            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z1y2)
+            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z1z2)
+            
+            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x2x1)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x2y1)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x2z1)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x2x2)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x2y2)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x2z2)
+            
+            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y2x1)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y2y1)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y2z1)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y2x2)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y2y2)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y2z2)
+            
+            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z2x1)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z2y1)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z2z1)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z2x2)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z2y2)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z2z2)
+            
+            
+            
+            hessian_x3x3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
+            hessian_x3y3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[1] - coord2[1])
+            hessian_x3z3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[2] - coord2[2])
+            hessian_x3x2 = -1 * hessian_x3x3
+            hessian_x3y2 = -1 * hessian_x3y3
+            hessian_x3z2 = -1 * hessian_x3z3
+            
+            hessian_y3x3 = hessian_x3y3
+            hessian_y3y3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
+            hessian_y3z3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) * (coord1[2] - coord2[2])
+            hessian_y3x2 = -1 * hessian_y3x3
+            hessian_y3y2 = -1 * hessian_y3y3
+            hessian_y3z2 = -1 * hessian_y3z3
+            
+            hessian_z3x3 = hessian_x3z3
+            hessian_z3y3 = hessian_y3z3
+            hessian_z3z3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[2] - coord2[2]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
+            hessian_z3x2 = -1 * hessian_z1x1
+            hessian_z3y2 = -1 * hessian_z1y1
+            hessian_z3z2 = -1 * hessian_z1z1 
+            
+            hessian_x2x3 = hessian_x3x2
+            hessian_x2y3 = hessian_y3x2
+            hessian_x2z3 = hessian_z3x2
+            hessian_x2x2 = -1 * hessian_x2x3
+            hessian_x2y2 = -1 * hessian_x2y3
+            hessian_x2z2 = -1 * hessian_x2z3
+
+            hessian_y2x3 = hessian_x3y2
+            hessian_y2y3 = hessian_y3y2
+            hessian_y2z3 = hessian_z3y2
+            hessian_y2x2 = -1 * hessian_y2x3
+            hessian_y2y2 = -1 * hessian_y2y3
+            hessian_y2z2 = -1 * hessian_y2z3
+            
+            hessian_z2x3 = hessian_x3z2
+            hessian_z2y3 = hessian_y3z2
+            hessian_z2z3 = hessian_z3z2
+            hessian_z2x2 = -1 * hessian_z2x3
+            hessian_z2y2 = -1 * hessian_z2y3
+            hessian_z2z2 = -1 * hessian_z2z3
+
+            tmp_hess[3*(coord3_num-1)+0][3*(coord3_num-1)+0] = copy.copy(hessian_x3x3)
+            tmp_hess[3*(coord3_num-1)+0][3*(coord3_num-1)+1] = copy.copy(hessian_x3y3)
+            tmp_hess[3*(coord3_num-1)+0][3*(coord3_num-1)+2] = copy.copy(hessian_x3z3)
+            tmp_hess[3*(coord3_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x3x2)
+            tmp_hess[3*(coord3_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x3y2)
+            tmp_hess[3*(coord3_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x3z2)
+            
+            tmp_hess[3*(coord3_num-1)+1][3*(coord3_num-1)+0] = copy.copy(hessian_y3x3)
+            tmp_hess[3*(coord3_num-1)+1][3*(coord3_num-1)+1] = copy.copy(hessian_y3y3)
+            tmp_hess[3*(coord3_num-1)+1][3*(coord3_num-1)+2] = copy.copy(hessian_y3z3)
+            tmp_hess[3*(coord3_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y3x2)
+            tmp_hess[3*(coord3_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y3y2)
+            tmp_hess[3*(coord3_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y3z2)
+            
+            tmp_hess[3*(coord3_num-1)+2][3*(coord3_num-1)+0] = copy.copy(hessian_z3x3)
+            tmp_hess[3*(coord3_num-1)+2][3*(coord3_num-1)+1] = copy.copy(hessian_z3y3)
+            tmp_hess[3*(coord3_num-1)+2][3*(coord3_num-1)+2] = copy.copy(hessian_z3z3)
+            tmp_hess[3*(coord3_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z3x2)
+            tmp_hess[3*(coord3_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z3y2)
+            tmp_hess[3*(coord3_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z3z2)
+            
+            tmp_hess[3*(coord2_num-1)+0][3*(coord3_num-1)+0] = copy.copy(hessian_x2x3)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord3_num-1)+1] = copy.copy(hessian_x2y3)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord3_num-1)+2] = copy.copy(hessian_x2z3)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x2x2)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x2y2)
+            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x2z2)
+            
+            tmp_hess[3*(coord2_num-1)+1][3*(coord3_num-1)+0] = copy.copy(hessian_y2x3)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord3_num-1)+1] = copy.copy(hessian_y2y3)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord3_num-1)+2] = copy.copy(hessian_y2z3)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y2x2)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y2y2)
+            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y2z2)
+            
+            tmp_hess[3*(coord2_num-1)+2][3*(coord3_num-1)+0] = copy.copy(hessian_z2x3)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord3_num-1)+1] = copy.copy(hessian_z2y3)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord3_num-1)+2] = copy.copy(hessian_z2z3)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z2x2)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z2y2)
+            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z2z2)
+            
+            
+            hessian = hessian + tmp_hess
+            
+            return hessian
+           
         
         def calc_keep_dihedral_angle(coord1, coord2, coord3, coord4, spring_const, keep_dihedral_angle):
 
@@ -2079,80 +2255,202 @@ class BiasPotentialCalculation:
             v1 = v1 / np.linalg.norm(v1, ord=2)
             v2 = np.cross(a2, a3)
             v2 = v2 / np.linalg.norm(v2, ord=2)
-            porm = np.sign((v1 * a3).sum(-1))
             angle = np.arccos((v1*v2).sum(-1) / ((v1**2).sum(-1) * (v2**2).sum(-1))**0.5)
-            if not porm == 0:
-                angle = angle * porm
-            
+
             energy = 0.5 * spring_const * (angle - np.radians(keep_dihedral_angle)) ** 2
             
             return energy #hartree    
-            
-
+        
+        
         def calc_keep_dihedral_angle_grad(coord1, coord2, coord3, coord4, spring_const, keep_dihedral_angle):
-
+            eps = 1e-8
             a1 = coord2 - coord1
             a2 = coord3 - coord2
             a3 = coord4 - coord3
 
             v1 = np.cross(a1, a2)
-            v1_hat = v1 / (v1 * v1).sum(-1)**0.5
+            v1_norm = np.linalg.norm(v1) + eps
             v2 = np.cross(a2, a3)
-            v2_hat = v2 / (v2 * v2).sum(-1)**0.5
+            v2_norm = np.linalg.norm(v2) + eps
 
-            yc_zb = a1[1]*a2[2] - a1[2]*a2[1]
-            za_xc = a1[2]*a2[0] - a1[0]*a2[2]
-            xb_ya = a1[0]*a2[1] - a1[1]*a2[0]
+            v1_base = v1 / v1_norm
+            v2_base = v2 / v2_norm
             
-            bn_cm = a2[1]*a3[2] - a2[2]*a3[1]
-            cl_an = a2[2]*a3[0] - a2[0]*a3[2]
-            am_bl = a2[0]*a3[1] - a2[1]*a3[0]
-            
-            
-            alpha = a2[0] ** 2 + a2[1] ** 2 + a2[2] ** 2
-            beta = a1[1]*cl_an + a1[2]*am_bl + a1[0]*bn_cm
-            gamma = (v1_hat*v2_hat).sum(-1)
-            A = (v2_hat**2).sum(-1) 
-            B = (v1_hat**2).sum(-1) 
-            
-            omega = gamma/((A ** 0.5)*(B ** 0.5))
-            
-            porm = np.sign((v1_hat * a3).sum(-1))
-            
-            angle = np.arccos(omega)
-            
-            if not porm == 0:
-                angle = angle * porm
 
-            dV = spring_const * (angle - np.radians(keep_dihedral_angle))
-            d_omega = -1/np.sqrt(abs(1 - omega ** 2) + 1e-8) 
+            A = a1[1] * a2[2] - a1[2] * a2[1] + eps
+            B = a1[2] * a2[0] - a1[0] * a2[2] + eps
+            C = a1[0] * a2[1] - a1[1] * a2[0] + eps
+
+            D = a2[1] * a3[2] - a2[2] * a3[1] + eps
+            E = a2[2] * a3[0] - a2[0] * a3[2] + eps
+            F = a2[0] * a3[1] - a2[1] * a3[0] + eps
+
+
+            Z = np.sum(v1_base * v2_base)
+            Y_1 = np.sum(v1_base * v1_base) 
+            Y_2 = np.sum(v2_base * v2_base) 
+            Y = Y_1 + Y_2
+            Y_sqrt = Y ** 0.5
+            X = Z / (Y_sqrt)
+
+            angle = np.arccos(np.sum(v1_base*v2_base) / (np.sum(v1_base**2) * np.sum(v2_base**2))**0.5)
+
+            dE_d_angle = spring_const * (angle - np.radians(np.abs(keep_dihedral_angle)))
+            d_angle_dX = -1 / np.sqrt(np.abs(1 - X ** 2)) 
+            #-----------------------------------------------
+            d_BE_d_a1_x = -E * a2[2]
+            d_v1_norm_v2_norm_d_a1_x = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-B * a2[2] + C * a2[1])
+            d_CF_d_a1_x = F * a2[1]
+            dB_d_a1_x = -a2[2]
+            d_v1_norm_d_a1_x = (-B * a2[2] + C * a2[1]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
+            dC_d_a1_x = a2[1]
+            part_1 = (((d_BE_d_a1_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_x * B * E) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_CF_d_a1_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_x * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (B / v1_norm) * ((dB_d_a1_x * v1_norm - B * d_v1_norm_d_a1_x) / v1_norm ** 2)
+            part_4 = 2 * (C / v1_norm) * ((dC_d_a1_x * v1_norm - C * d_v1_norm_d_a1_x) / v1_norm ** 2)
+ 
+            dX_d_a1_x = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
+
+            d_AD_d_a1_y = D * a2[2]
+            d_v1_norm_v2_norm_d_a1_y = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-C * a2[0] + A * a2[2])
+            d_CF_d_a1_y = -F * a2[1]
+            dA_d_a1_y = a2[2]
+            d_v1_norm_d_a1_y = (-C * a2[0] + A * a2[2]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
+            dC_d_a1_y = -a2[0]
+            part_1 = (((d_AD_d_a1_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_y * A * D) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_CF_d_a1_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_y * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (A / v1_norm) * ((dA_d_a1_y * v1_norm - A * d_v1_norm_d_a1_y) / v1_norm ** 2)
+            part_4 = 2 * (C / v1_norm) * ((dC_d_a1_y * v1_norm - C * d_v1_norm_d_a1_y) / v1_norm ** 2)
+ 
+            dX_d_a1_y = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
+
+
+            d_AD_d_a1_z = -D * a2[1]
+            d_v1_norm_v2_norm_d_a1_z = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-A * a2[1] + B * a2[0])
+            d_BE_d_a1_z = E * a2[0]
+            dA_d_a1_z = -a2[1]
+            d_v1_norm_d_a1_z = (B * a2[0] - A * a2[1]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
+            dB_d_a1_z = a2[0]
+            part_1 = (((d_AD_d_a1_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_z * A * D) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_BE_d_a1_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_z * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (A / v1_norm) * ((dA_d_a1_z * v1_norm - A * d_v1_norm_d_a1_z) / v1_norm ** 2)
+            part_4 = 2 * (B / v1_norm) * ((dB_d_a1_z * v1_norm - B * d_v1_norm_d_a1_z) / v1_norm ** 2)
+ 
+            dX_d_a1_z = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
             
-            tmp_denominator = (A ** 0.5) * (B ** 1.5)
-            grad_i_x = dV * d_omega * ((-1 * alpha * yc_zb * beta)/tmp_denominator)
-            grad_i_y = dV * d_omega * ((-1 * alpha * za_xc * beta)/tmp_denominator)
-            grad_i_z = dV * d_omega * ((-1 * alpha * xb_ya * beta)/tmp_denominator)
+            #-------------------------------------
+            d_BE_d_a3_x = B * a2[2]
+            d_v1_norm_v2_norm_d_a3_x = ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (E * a2[2] - F * a2[1])
+            d_CF_d_a3_x = -C * a2[1]
+            dE_d_a3_x = a2[2]
+            d_v2_norm_d_a3_x = (E * a2[2] -F * a2[1]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5 
+            dF_d_a3_x = -a2[1]
+            part_1 = (((d_BE_d_a3_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_x * B * E) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_CF_d_a3_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_x * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (E / v2_norm) * ((dE_d_a3_x * v2_norm - E * d_v2_norm_d_a3_x) / v2_norm ** 2)
+            part_4 = 2 * (F / v2_norm) * ((dF_d_a3_x * v2_norm - F * d_v2_norm_d_a3_x) / v2_norm ** 2)
+ 
+            dX_d_a3_x = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
+
+            d_AD_d_a3_y = -A * a2[2]
+            d_v1_norm_v2_norm_d_a3_y = ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-D * a2[2] + F * a2[0])
+            d_CF_d_a3_y = C * a2[0]
+            dD_d_a3_y = -a2[2]
+            d_v2_norm_d_a3_y = (-D * a2[2] + F * a2[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
+            dF_d_a3_y = a2[0]
+            part_1 = (((d_AD_d_a3_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_y * A * D) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_CF_d_a3_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_y * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (D / v2_norm) * ((dD_d_a3_y * v2_norm - D * d_v2_norm_d_a3_y) / v2_norm ** 2)
+            part_4 = 2 * (F / v2_norm) * ((dF_d_a3_y * v2_norm - F * d_v2_norm_d_a3_y) / v2_norm ** 2)
+ 
+            dX_d_a3_y = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
+
+
+            d_AD_d_a3_z = A * a2[1]
+            d_v1_norm_v2_norm_d_a3_z = ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-E * a2[0] + D * a2[1])
+            d_BE_d_a3_z = -B * a2[0]
+            dE_d_a3_z = -a2[0]
+            d_v2_norm_d_a3_z = (D * a2[1] - E * a2[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
+            dD_d_a3_z = a2[1]
+            part_1 = (((d_AD_d_a3_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_z * A * D) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_BE_d_a3_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_z * B * E) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (E / v2_norm) * ((dE_d_a3_z * v2_norm - E * d_v2_norm_d_a3_z) / v2_norm ** 2)
+            part_4 = 2 * (D / v2_norm) * ((dD_d_a3_z * v2_norm - D * d_v2_norm_d_a3_z) / v2_norm ** 2)
+ 
+            dX_d_a3_z = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
+            #-------------------------------------
             
-            tmp_denominator = [(A ** 0.5) * (B ** 0.5), (A ** 1.5) * (B ** 0.5), (A ** 0.5) * (B ** 1.5)]
-            grad_j_x = dV * d_omega * (((-1 * a3[2] * za_xc + a3[1] * xb_ya + a1[2] * cl_an -1 * a1[1] * am_bl)/tmp_denominator[0]) - (((a3[1] * am_bl -a3[2] * cl_an ) * gamma)/tmp_denominator[1]) - (((a1[2] * za_xc -a1[1]*xb_ya) * gamma)/tmp_denominator[2]))
-            grad_j_y = dV * d_omega * ((( a3[2] * yc_zb - a3[0] * xb_ya - a1[2] * bn_cm + a1[0] * am_bl)/tmp_denominator[0]) - (((a3[2] * bn_cm -a3[0] * am_bl ) * gamma)/tmp_denominator[1]) - (((a1[0] * xb_ya -a1[2]*yc_zb) * gamma)/tmp_denominator[2]))
-            grad_j_z = dV * d_omega * ((( -1*a3[1] * yc_zb + a3[0] * za_xc + a1[1] * bn_cm -1 * a1[0] * cl_an)/tmp_denominator[0]) - (((a3[0] * cl_an -a3[1] * bn_cm ) * gamma)/tmp_denominator[1]) - (((a1[1] * yc_zb -a1[0] * za_xc) * gamma)/tmp_denominator[2]))
-            
-            tmp_denominator = (B ** 0.5) * (A ** 1.5)
-            grad_k_x = dV * d_omega * ( (alpha * bn_cm * (-1 * yc_zb * a3[0] + (a3[2]*a1[1] - a3[1]*a1[2]) * a2[0] + (a2[2]*a3[1] - a2[1]*a3[2]) * a1[0])) / tmp_denominator)
-            grad_k_y = dV * d_omega * ( (-1 * alpha * cl_an * (-1 * za_xc * a3[1] + (a2[0]*a3[2] - a2[2]*a3[0] ) * a2[1] + (a3[0]*a1[2] - a3[2]*a1[0]) * a1[1] )) / tmp_denominator)
-            grad_k_z = dV * d_omega * ( (alpha * am_bl * (-1 * xb_ya * a3[2] + (a2[1]*a3[0] - a2[0]*a3[1]) * a1[2] + (a3[0]*a1[2] - a3[0]*a1[2]) * a2[2])) / tmp_denominator)
-            
-            grad_i = np.array([grad_i_x, grad_i_y, grad_i_z] , dtype="float64")
-            grad_j = np.array([grad_j_x, grad_j_y, grad_j_z] , dtype="float64")
-            grad_k = np.array([grad_k_x, grad_k_y, grad_k_z] , dtype="float64")
-            
-            grad_1 = - grad_i
-            grad_2 = grad_i - grad_j
-            grad_3 = grad_j - grad_k
-            grad_4 = grad_k
-            
+            d_BE_d_a2_x = E * a1[2] -B * a3[2]
+            d_v1_norm_v2_norm_d_a2_x = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (B * a1[2] - C * a1[1]) + ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-E * a3[2] + F * a3[1])
+            d_CF_d_a2_x = -F * a1[1] + C * a3[1]
+            dB_d_a2_x = a1[2]
+            d_v1_norm_d_a2_x = (B * a1[2] - C * a1[1]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
+            dC_d_a2_x = -a1[1]
+            dE_d_a2_x = -a3[2]
+            d_v2_norm_d_a2_x = (-E * a3[2] + F * a3[1]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5 
+            dF_d_a2_x = a3[1]
+            part_1 = (((d_BE_d_a2_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_x * B * E) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_CF_d_a2_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_x * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (B / v1_norm) * ((dB_d_a2_x * v1_norm - B * d_v1_norm_d_a2_x) / v1_norm ** 2)
+            part_4 = 2 * (C / v1_norm) * ((dC_d_a2_x * v1_norm - C * d_v1_norm_d_a2_x) / v1_norm ** 2)
+            part_5 = 2 * (E / v2_norm) * ((dE_d_a2_x * v2_norm - E * d_v2_norm_d_a2_x) / v2_norm ** 2)
+            part_6 = 2 * (F / v2_norm) * ((dF_d_a2_x * v2_norm - F * d_v2_norm_d_a2_x) / v2_norm ** 2)
+
+            dX_d_a2_x = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_5 + part_6)) / Y
+
+            d_AD_d_a2_y = -D * a1[2] + A * a3[2]
+            d_v1_norm_v2_norm_d_a2_y = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-A * a1[2] + C * a3[0]) + ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (D * a3[2] - F * a3[0])
+            d_CF_d_a2_y = -C * a3[0] + F * a1[0]
+            dA_d_a2_y = -a1[2]
+            d_v1_norm_d_a2_y = (-A * a1[2] + C * a2[0]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
+            dC_d_a2_y = a1[0]
+            dD_d_a2_y = a3[2]
+            d_v2_norm_d_a2_y = (D * a3[2] - F * a3[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
+            dF_d_a2_y = -a3[0]
+            part_1 = (((d_AD_d_a2_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_y * A * D) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_CF_d_a2_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_y * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (A / v1_norm) * ((dA_d_a2_y * v1_norm - A * d_v1_norm_d_a2_y) / v1_norm ** 2)
+            part_4 = 2 * (C / v1_norm) * ((dC_d_a2_y * v1_norm - C * d_v1_norm_d_a2_y) / v1_norm ** 2)
+            part_5 = 2 * (D / v2_norm) * ((dD_d_a2_y * v2_norm - D * d_v2_norm_d_a2_y) / v2_norm ** 2)
+            part_6 = 2 * (F / v2_norm) * ((dF_d_a2_y * v2_norm - F * d_v2_norm_d_a2_y) / v2_norm ** 2)
+
+            dX_d_a2_y = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_5 + part_6)) / Y
+
+
+            d_AD_d_a2_z = D * a1[1] -A * a3[1]
+            d_v1_norm_v2_norm_d_a2_z = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (A * a1[1] - B * a1[0]) + ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-D * a3[1] + E * a3[0])
+            d_BE_d_a2_z = -E * a1[0] + B * a3[0]
+            dA_d_a2_z = a1[1]
+            d_v1_norm_d_a2_z = (A * a1[1] - B * a1[0]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
+            dB_d_a2_z = -a1[0]
+            dE_d_a2_z = a3[0]
+            d_v2_norm_d_a2_z = (-D * a3[1] + E * a3[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
+            dD_d_a2_z = -a3[1]
+            part_1 = (((d_AD_d_a2_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_z * A * D) / (v1_norm * v2_norm) ** 2)
+            part_2 = (((d_BE_d_a2_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_z * C * F) / (v1_norm * v2_norm) ** 2)
+            part_3 = 2 * (A / v1_norm) * ((dA_d_a2_z * v1_norm - A * d_v1_norm_d_a2_z) / v1_norm ** 2)
+            part_4 = 2 * (B / v1_norm) * ((dB_d_a2_z * v1_norm - B * d_v1_norm_d_a2_z) / v1_norm ** 2)
+            part_5 = 2 * (E / v2_norm) * ((dE_d_a2_z * v2_norm - E * d_v2_norm_d_a2_z) / v2_norm ** 2)
+            part_6 = 2 * (D / v2_norm) * ((dD_d_a2_z * v2_norm - D * d_v2_norm_d_a2_z) / v2_norm ** 2)
+
+            dX_d_a2_z = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_5 + part_6)) / Y
+            #-------------------------------------
+            grad_21 = np.array([dE_d_angle * d_angle_dX * dX_d_a1_x, dE_d_angle * d_angle_dX * dX_d_a1_y, dE_d_angle * d_angle_dX * dX_d_a1_z] ,dtype="float64")
+            grad_32 = np.array([dE_d_angle * d_angle_dX * dX_d_a2_x, dE_d_angle * d_angle_dX * dX_d_a2_y, dE_d_angle * d_angle_dX * dX_d_a2_z] ,dtype="float64")
+            grad_43 = np.array([dE_d_angle * d_angle_dX * dX_d_a3_x, dE_d_angle * d_angle_dX * dX_d_a3_y, dE_d_angle * d_angle_dX * dX_d_a3_z] ,dtype="float64")
+
+            grad_1 = - grad_21
+            grad_2 = (grad_21 - grad_32) 
+            grad_3 = (grad_32 - grad_43) 
+            grad_4 = grad_43
+
             return grad_1, grad_2, grad_3, grad_4 #hartree/bohr
 
+
+        def calc_keep_dihedral_angle_hess(coord1, coord2, coord3, coord4, spring_const, keep_dihedral_angle, coord1_num, coord2_num, coord3_num, coord4_num, hessian):#not implemented(this function's second derivative is very complicated. thus, implement numerical derivative)
+            numerical_derivative_delta = 0.0001
+            return
+            
             
         def calc_void_point_pot(coord, void_point_coord, spring_const, keep_dist, order):
             vector = np.linalg.norm((coord - void_point_coord), ord=2)
@@ -2200,24 +2498,26 @@ class BiasPotentialCalculation:
             
             return hessian
         
-        def calc_gaussian_pot(geom_num_list, gau_pot_energy, initial_geom_num_list):#This function is just for fun. Thus, it is no scientific basis.
+        def calc_gaussian_pot(geom_num_list, gau_pot_energy, geometry_list):#This function is just for fun. Thus, it is no scientific basis.
             geom_mean_coord = np.mean(geom_num_list, axis=0)
-            A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
-            energy = A*np.sum(np.exp(-(geom_num_list - initial_geom_num_list - geom_mean_coord) ** 2))
+            for initial_geom_num_list in geometry_list:
+                A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
+                energy = A*np.sum(np.exp(-(geom_num_list - initial_geom_num_list - geom_mean_coord) ** 2))
             
             return energy
         
-        def calc_gaussian_pot_grad(geom_num_list, gau_pot_energy, initial_geom_num_list):#This function is just for fun. Thus, it is no scientific basis.
+        def calc_gaussian_pot_grad(geom_num_list, gau_pot_energy, geometry_list):#This function is just for fun. Thus, it is no scientific basis.
             A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
             geom_mean_coord = np.mean(geom_num_list, axis=0)
-            grad = []
-            for i in range(len(geom_num_list)):
-                
-                grad_x = -2.0 * A * (geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) * np.exp(-(geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) ** 2)
-                grad_y = -2.0 * A * (geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) * np.exp(-(geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) ** 2)
-                grad_z = -2.0 * A * (geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) * np.exp(-(geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) ** 2)
-                
-                grad.append(np.array([grad_x, grad_y, grad_z], dtype="float64"))
+            grad = geom_num_list*0.0
+            for initial_geom_num_list in geometry_list:
+                for i in range(len(geom_num_list)):
+                        
+                    grad_x = -2.0 * A * (geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) * np.exp(-(geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) ** 2)
+                    grad_y = -2.0 * A * (geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) * np.exp(-(geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) ** 2)
+                    grad_z = -2.0 * A * (geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) * np.exp(-(geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) ** 2)
+                    
+                    grad[i] += np.array([grad_x, grad_y, grad_z], dtype="float64")
             
             return grad
             
@@ -2258,7 +2558,7 @@ class BiasPotentialCalculation:
         def calc_LJ_Repulsive_pot_v2_hess(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list, hessian):
             
             LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1]))
-            
+            tmp_hess = hessian*0.0
             for i in target:
                 UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
                 UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
@@ -2466,8 +2766,8 @@ class BiasPotentialCalculation:
         
         #------------------
         if force_data["gaussian_pot_energy"] != 0.0:
-            AFIR_e += calc_gaussian_pot(geom_num_list, force_data["gaussian_pot_energy"], initial_geom_num_list)
-            BPA_grad_list += calc_gaussian_pot_grad(geom_num_list, force_data["gaussian_pot_energy"], initial_geom_num_list)
+            AFIR_e += calc_gaussian_pot(geom_num_list, force_data["gaussian_pot_energy"], GeoInfo.geometry_list)
+            BPA_grad_list += calc_gaussian_pot_grad(geom_num_list, force_data["gaussian_pot_energy"], GeoInfo.geometry_list)
         else:
             pass
         
@@ -2592,6 +2892,9 @@ class BiasPotentialCalculation:
                 AFIR_e += calc_AFIR_pot(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
                 
                 BPA_grad_list += calc_AFIR_grad(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
+                
+                
+                
                 if self.FC_COUNT == -1:
                     pass
                 elif iter % self.FC_COUNT == 0:
@@ -2640,13 +2943,13 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         
         if args.DELTA == "x":
             if args.opt_method[0] == "FSB":
-                args.DELTA = 0.15
+                args.DELTA = 0.5
             elif args.opt_method[0] == "RFO_FSB":
-                args.DELTA = 0.15
+                args.DELTA = 0.5
             elif args.opt_method[0] == "BFGS":
-                args.DELTA = 0.15
+                args.DELTA = 0.5
             elif args.opt_method[0] == "RFO_BFGS":
-                args.DELTA = 0.15
+                args.DELTA = 0.5
                 
             elif args.opt_method[0] == "mBFGS":
                 args.DELTA = 0.50
@@ -2763,7 +3066,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     w.write("\n")
         return file_directory
 
-    def sinple_plot(self, num_list, energy_list, energy_list_2, file_directory):
+    def double_plot(self, num_list, energy_list, energy_list_2, file_directory):
         
         fig = plt.figure()
 
@@ -2780,8 +3083,21 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         ax2.set_ylabel('Electronic Energy [kcal/mol]')
         plt.title('normal_above AFIR_below')
         plt.tight_layout()
-        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot_sinple_"+str(time.time())+".png", format="png", dpi=300)
+        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot.png", format="png", dpi=300)
         plt.close()
+        return
+        
+    def single_plot(self, num_list, energy_list, file_directory, atom_num, axis_name_1="ITR. ", axis_name_2="cosθ", name="orthogonality"):
+        fig, ax = plt.subplots()
+        ax.plot(num_list,energy_list, "r--o" , markersize=2)
+
+        ax.set_title(str(atom_num))
+        ax.set_xlabel(axis_name_1)
+        ax.set_ylabel(axis_name_2)
+        fig.tight_layout()
+        fig.savefig(self.BPA_FOLDER_DIRECTORY+"Plot_"+name+"_"+str(atom_num)+".png", format="png", dpi=200)
+        plt.close()
+         
         return
 
     def xyz_file_make(self):
@@ -2803,6 +3119,51 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                         w2.write(i)
         print("\ngeometry collection is completed...\n")
         return
+
+    def project_out_hess_tr_and_rot(self, hessian, element_list, geomerty):
+        natoms = len(element_list)
+        elem_mass = np.array([atomic_mass(elem) for elem in element_list], dtype="float64")
+        
+        M = np.diag(np.repeat(elem_mass, 3))
+        #M_plus_sqrt = np.diag(np.repeat(elem_mass, 3) ** (0.5))
+        M_minus_sqrt = np.diag(np.repeat(elem_mass, 3) ** (-0.5))
+
+        m_plus_sqrt = np.repeat(elem_mass, 3) ** (0.5)
+        #m_minus_sqrt = np.repeat(elem_mass, 3) ** (-0.5)
+
+        mw_hessian = np.dot(np.dot(M_minus_sqrt, hessian), M_minus_sqrt)#mw = mass weighted
+        
+        tr_x = (np.tile(np.array([1, 0, 0]), natoms)).reshape(-1, 3)
+        tr_y = (np.tile(np.array([0, 1, 0]), natoms)).reshape(-1, 3)
+        tr_z = (np.tile(np.array([0, 0, 1]), natoms)).reshape(-1, 3)
+
+        mw_rot_x = np.cross(geomerty, tr_x).flatten() * m_plus_sqrt
+        mw_rot_y = np.cross(geomerty, tr_y).flatten() * m_plus_sqrt
+        mw_rot_z = np.cross(geomerty, tr_z).flatten() * m_plus_sqrt
+
+        mw_tr_x = tr_x.flatten() * m_plus_sqrt
+        mw_tr_y = tr_y.flatten() * m_plus_sqrt
+        mw_tr_z = tr_z.flatten() * m_plus_sqrt
+
+        TR_vectors = np.vstack([mw_tr_x, mw_tr_y, mw_tr_z, mw_rot_x, mw_rot_y, mw_rot_z])
+        
+        Q, R = np.linalg.qr(TR_vectors.T)
+        keep_indices = ~np.isclose(np.diag(R), 0, atol=1e-6, rtol=0)
+        TR_vectors = Q.T[keep_indices]
+        n_tr = len(TR_vectors)
+
+        P = np.identity(natoms * 3)
+        for vector in TR_vectors:
+            P -= np.outer(vector, vector)
+
+        hess_proj = np.dot(np.dot(P.T, mw_hessian), P)
+
+        eigenvalues, eigenvectors = np.linalg.eigh(hess_proj)
+        eigenvalues = eigenvalues[n_tr:]
+        eigenvectors = eigenvectors[:, n_tr:]
+        print("=== hessian projected out transition and rotation (before add bias potential) ===")
+        print("eigenvalues: ", eigenvalues)
+        return hess_proj
 
     def psi4_calculation(self, file_directory, element_list, electric_charge_and_multiplicity, iter):
         """execute QM calclation."""
@@ -2836,11 +3197,11 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 psi4.set_options({"cubeprop_tasks": ["esp"],'cubeprop_filepath': file_directory})
                 with open(input_file,"r") as f:
                     input_data = f.read()
-                    input_data = psi4.geometry(input_data)
-                    input_data_for_display = np.array(input_data.geometry(), dtype = "float64")
+                    input_data = psi4.geometry(input_data)#ang.
+                    input_data_for_display = np.array(input_data.geometry(), dtype = "float64")#Bohr
                             
                 g, wfn = psi4.gradient(self.FUNCTIONAL, molecule=input_data, return_wfn=True)
-
+                e = float(wfn.energy())
                 g = np.array(g, dtype = "float64")
                 psi4.oeprop(wfn, 'DIPOLE')
                 psi4.oeprop(wfn, 'MULLIKEN_CHARGES')
@@ -2860,12 +3221,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 #    for i in range(len(np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist())):
                 #        f.write(",".join(list(map(str,np.array(wfn.variable('WIBERG LOWDIN INDICES')).tolist()[i])))+"\n")           
                         
-                with open(input_file[:-4]+".log","r") as f:
-                    word_list = f.readlines()
-                    for word in word_list:
-                        if "    Total Energy =             " in word:
-                            word = word.replace("    Total Energy =             ","")
-                            e = (float(word))
+
                 print("\n")
 
                 
@@ -2881,6 +3237,11 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     freqs = np.array(wfn.frequencies())
                     
                     print("frequencies: \n",freqs)
+                    eigenvalues, _ = np.linalg.eigh(exact_hess)
+                    print("=== hessian (before add bias potential) ===")
+                    print("eigenvalues: ", eigenvalues)
+                    exact_hess = self.project_out_hess_tr_and_rot(exact_hess, element_list, input_data_for_display)
+
                     self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
                 
                 
@@ -2894,7 +3255,6 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 
             psi4.core.clean() 
         return e, g, input_data_for_display, finish_frag
-
 
     def tblite_calculation(self, file_directory, element_number_list, electric_charge_and_multiplicity, iter, method):
         """execute extended tight binding method calclation."""
@@ -2946,7 +3306,6 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 return 0, 0, 0, finish_frag 
                 
         return e, g, positions, finish_frag
-
 
     def force_data_parser(self, args):
         def num_parse(numbers):
@@ -3155,7 +3514,6 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         
         return force_data
 
-
     def main(self):
         force_data = self.force_data_parser(args)
         finish_frag = False
@@ -3197,6 +3555,10 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             element_number_list = np.array(element_number_list, dtype="int")
         #----------------------------------
         
+        cos_list = [[] for i in range(len(force_data["geom_info"]))]
+        grad_list = []
+        GeoInfo = GeometryInfo()
+        #----------------------------------
         for iter in range(self.NSTEP):
             exit_file_detect = glob.glob(self.BPA_FOLDER_DIRECTORY+"*.txt")
             for file in exit_file_detect:
@@ -3220,28 +3582,27 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             if iter == 0:
                 initial_geom_num_list = geom_num_list
                 pre_geom = initial_geom_num_list
-                
-            #--------------------geometry info
-            if len(force_data["geom_info"]) > 1:
-                CSI = CalculationStructInfo
-                data_list, data_name_list = CSI.Data_extract(glob.glob(file_directory+"/*.xyz")[0], force_data["geom_info"])
-                if iter == 0:
-                    with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:
-                        f.write(",".join(data_name_list)+"\n")
-                
-                with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:    
-                    f.write(",".join(list(map(str,data_list)))+"\n")
+                GeoInfo.geometry_list.append(geom_num_list)
+            else:
+                GeoInfo.geometry_list.append(geom_num_list)
+
             #-------------------energy profile 
             if iter == 0:
                 with open(self.BPA_FOLDER_DIRECTORY+"energy_profile.csv","a") as f:
                     f.write("energy [hartree] \n")
             with open(self.BPA_FOLDER_DIRECTORY+"energy_profile.csv","a") as f:
                 f.write(str(e)+"\n")
+            #-------------------gradient profile
+            if iter == 0:
+                with open(self.BPA_FOLDER_DIRECTORY+"gradient_profile.csv","a") as f:
+                    f.write("gradient [hartree/Bohr] \n")
+            with open(self.BPA_FOLDER_DIRECTORY+"gradient_profile.csv","a") as f:
+                f.write(str(np.linalg.norm(g))+"\n")
             #-------------------
             if finish_frag:#If QM calculation doesnt end, the process of this program is terminated. 
                 break   
             CalcBiaspot = BiasPotentialCalculation(self.Model_hess, self.FC_COUNT)
-            _, AFIR_e, new_g = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_g, iter, initial_geom_num_list)#new_geometry:ang.
+            _, AFIR_e, new_g = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_g, iter, GeoInfo)#new_geometry:ang.
             self.Model_hess = CalcBiaspot.Model_hess
             #----------------------------
 
@@ -3255,6 +3616,23 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             self.ENERGY_LIST_FOR_PLOTTING.append(e*self.hartree2kcalmol)
             self.AFIR_ENERGY_LIST_FOR_PLOTTING.append(AFIR_e*self.hartree2kcalmol)
             self.NUM_LIST.append(int(iter))
+            
+            #--------------------geometry info
+            if len(force_data["geom_info"]) > 1:
+                CSI = CalculationStructInfo()
+               
+                data_list, data_name_list = CSI.Data_extract(glob.glob(file_directory+"/*.xyz")[0], force_data["geom_info"])
+                
+                for num, i in enumerate(force_data["geom_info"]):
+                    cos = CSI.calculate_cos(new_g[i-1] - g[i-1], g[i-1])
+                    cos_list[num].append(cos)
+                if iter == 0:
+                    with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:
+                        f.write(",".join(data_name_list)+"\n")
+                
+                with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:    
+                    f.write(",".join(list(map(str,data_list)))+"\n")
+
             #----------------------------
             print("caluculation results (unit a.u.):")
             print("OPT method            : {} ".format(force_data["opt_method"]))
@@ -3269,6 +3647,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             print("BIAS ENERGY SHIFT     : {:>15.12f} ".format(AFIR_e - pre_AFIR_e))
             
             
+            grad_list.append(np.linalg.norm(g))
             if abs(new_g.max()) < self.MAX_FORCE_THRESHOLD and abs(np.sqrt(np.square(new_g).mean())) < self.RMS_FORCE_THRESHOLD and  abs(move_vector.max()) < self.MAX_DISPLACEMENT_THRESHOLD and abs(np.sqrt(np.square(move_vector).mean())) < self.RMS_DISPLACEMENT_THRESHOLD:#convergent criteria
                 break
             #-------------------------
@@ -3287,10 +3666,18 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             
             geometry_list = self.make_geometry_list_2(new_geometry, element_list, electric_charge_and_multiplicity)
             file_directory = self.make_psi4_input_file(geometry_list, iter+1)
-            
-        self.sinple_plot(self.NUM_LIST, self.ENERGY_LIST_FOR_PLOTTING, self.AFIR_ENERGY_LIST_FOR_PLOTTING, file_directory)
+            #----------------------------
+
+            #----------------------------
+        #plot graph
+        self.double_plot(self.NUM_LIST, self.ENERGY_LIST_FOR_PLOTTING, self.AFIR_ENERGY_LIST_FOR_PLOTTING, file_directory)
+        self.single_plot(self.NUM_LIST, grad_list, file_directory, "", axis_name_2="gradient [a.u.]", name="gradient")
+        if len(force_data["geom_info"]) > 1:
+            for num, i in enumerate(force_data["geom_info"]):
+                self.single_plot(self.NUM_LIST, cos_list[num], file_directory, i)
+        
+        #
         self.xyz_file_make()
-        #-----------------------
         
         local_max_energy_list_index = argrelextrema(np.array(self.ENERGY_LIST_FOR_PLOTTING), np.greater)
         with open(self.BPA_FOLDER_DIRECTORY+"approx_TS.txt","w") as f:
@@ -3303,7 +3690,15 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             for j in local_min_energy_list_index[0].tolist():
                 f.write(str(self.NUM_LIST[j])+"\n")
         
-        with open(self.BPA_FOLDER_DIRECTORY+"energy_profile.csv","w") as f:
+        inverse_grad_list = (-1)*np.array(grad_list, dtype="float64")
+        local_min_grad_list_index = argrelextrema(np.array(inverse_grad_list), np.greater)
+        with open(self.BPA_FOLDER_DIRECTORY+"local_min_grad.txt","w") as f:
+            for j in local_min_grad_list_index[0].tolist():
+                f.write(str(self.NUM_LIST[j])+"\n")
+        
+        
+        
+        with open(self.BPA_FOLDER_DIRECTORY+"energy_profile_kcalmol.csv","w") as f:
             f.write("ITER.,energy[kcal/mol]\n")
             for i in range(len(self.ENERGY_LIST_FOR_PLOTTING)):
                 f.write(str(i)+","+str(self.ENERGY_LIST_FOR_PLOTTING[i] - self.ENERGY_LIST_FOR_PLOTTING[0])+"\n")
@@ -3313,7 +3708,9 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         print("Complete...")
         return
         
-
+class GeometryInfo:
+    def __init__(self):
+        self.geometry_list = []
 
 class Opt_calc_tmps:
     def __init__(self, adam_m, adam_v, adam_count, eve_d_tilde=0.0):
@@ -3329,15 +3726,23 @@ class Model_hess_tmp:
         self.momentum_grad = momentum_grad
 
 class CalculationStructInfo:
-    def __init__():
+    def __init__(self):
         return
+    
+    def calculate_cos(self, bg, g):
+        if np.linalg.norm(bg) == 0.0 or np.linalg.norm(g) == 0.0:
+            cos = 2.0
+        else:
+            cos = np.sum(bg * g) / (np.linalg.norm(g) * np.linalg.norm(bg))
+        return cos
+     
     
     def calculate_distance(self, atom1, atom2):
         atom1, atom2 = np.array(atom1, dtype="float64"), np.array(atom2, dtype="float64")
         distance = np.linalg.norm(atom2 - atom1)
         return distance
 
-
+    
     def calculate_bond_angle(self, atom1, atom2, atom3):
         atom1, atom2, atom3 = np.array(atom1, dtype="float64"), np.array(atom2, dtype="float64"), np.array(atom3, dtype="float64")
         vector1 = atom1 - atom2
