@@ -12,9 +12,15 @@ import itertools
 
 from scipy.signal import argrelextrema
 
-
 import matplotlib.pyplot as plt
 import numpy as np
+
+try:
+    import torch
+    
+except:
+    print("please install pytorch. (pip install torch)")
+    sys.exit(1)
 
 try:
     import psi4
@@ -25,6 +31,8 @@ try:
     from tblite.interface import Calculator
 except:
     print("You can't use extended tight binding method.")
+
+
 
 """
     BiasPotentialAddition
@@ -82,14 +90,14 @@ def parser():
     parser.add_argument("-d", "--DELTA",  type=str, default='x', help='move step')
 
     parser.add_argument("-ma", "--manual_AFIR", nargs="*",  type=str, default=['0.0', '1', '2'], help='manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]')
-    parser.add_argument("-rp", "--repulsive_potential", nargs="*",  type=str, default=['0.0','1.0', '1', '2'], help='Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]')
-    parser.add_argument("-rpv2", "--repulsive_potential_v2", nargs="*",  type=str, default=['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+    parser.add_argument("-rp", "--repulsive_potential", nargs="*",  type=str, default=['0.0','1.0', '1', '2', 'scale'], help='Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] [scale or value(kJ/mol ang.)] ...]')
+    parser.add_argument("-rpv2", "--repulsive_potential_v2", nargs="*",  type=str, default=['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2', 'scale'], help='Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] [scale or value(kJ/mol ang.)] ...]')
     parser.add_argument("-kp", "--keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1,2'], help='keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
     parser.add_argument("-akp", "--anharmonic_keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1.0', '1,2'], help='Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
     parser.add_argument("-ka", "--keep_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3'], help='keep angle 0.5*k*(θ - θ0)^2 (0 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep angle (degrees)] [atom1,atom2,atom3] ...] ')
     parser.add_argument("-kda", "--keep_dihedral_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3,4'], help='keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] ')
     parser.add_argument("-vpp", "--void_point_pot", nargs="*",  type=str, default=['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"], help='void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] ')
-    parser.add_argument("-gp", "--gaussian_pot", nargs="*",  type=str, default=['0.0'], help='Add Gaussian-type bias potential around the initial structure. (ex.) [energy (kJ/mol)]')
+   
     parser.add_argument("-wp", "--well_pot", nargs="*", type=str, default=['0.0','1,2','0.5,0.6,1.5,1.6'], help="Add potential to limit atom distance. (ex.) [[wall energy (kJ/mol)] [atom1,atom2] [a,b,c,d (a<b<c<d) (ang.)] ...]")
     
     
@@ -115,14 +123,14 @@ class Interface:
         self.DELTA = 'x'
 
         self.manual_AFIR = ['0.0', '1', '2'] #manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]
-        self.repulsive_potential = ['0.0','1.0', '1', '2'] #Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]
-        self.repulsive_potential_v2 = ['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2']#Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]
+        self.repulsive_potential = ['0.0','1.0', '1', '2', 'scale'] #Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] [scale or value (ang. kJ/mol)] ...]
+        self.repulsive_potential_v2 = ['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2', 'scale']#Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] [scale or value (ang. kJ/mol)] ...]
         self.keep_pot = ['0.0', '1.0', '1,2']#keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
         self.anharmonic_keep_pot = ['0.0', '1.0', '1.0', '1,2']#Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
         self.keep_angle = ['0.0', '90', '1,2,3']#keep angle 0.5*k*(θ - θ0)^2 (0 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep angle (degrees)] [atom1,atom2,atom3] ...] 
         self.keep_dihedral_angle = ['0.0', '90', '1,2,3,4']#keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] 
         self.void_point_pot = ['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"]#void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] 
-        self.gaussian_pot = ['0.0']#Add Gaussian-type bias potential around the initial structure. (ex.) [energy (kJ/mol)]'
+
         self.well_pot = ['0.0','1,2','0.5,0.6,1.5,1.6']
         self.fix_atoms = ""#fix atoms (ex.) [atoms (ex.) 1,2,3-6]
         self.md_like_perturbation = "0.0"
@@ -134,6 +142,8 @@ class Interface:
 
 
 def UFF_VDW_distance_lib(element):
+    if element is int:
+        element = number_element(element)
     UFF_VDW_distance = {'H':2.886,'He':2.362 ,
                         'Li' : 2.451 ,'Be': 2.745, 'B':4.083 ,'C': 3.851, 'N':3.660,'O':3.500 , 'F':3.364,'Ne': 3.243, 
                         'Na':2.983,'Mg': 3.021 ,'Al':4.499 ,'Si': 4.295, 'P':4.147, 'S':4.035 ,'Cl':3.947,'Ar':3.868 ,
@@ -145,7 +155,8 @@ def UFF_VDW_distance_lib(element):
     return UFF_VDW_distance[element] / UnitValueLib().bohr2angstroms#Bohr
 
 def UFF_VDW_well_depth_lib(element):
-                
+    if element is int:
+        element = number_element(element)         
     UFF_VDW_well_depth = {'H':0.044, 'He':0.056 ,
                           'Li':0.025 ,'Be':0.085 ,'B':0.180,'C': 0.105, 'N':0.069, 'O':0.060,'F':0.050,'Ne':0.042 , 
                           'Na':0.030, 'Mg':0.111 ,'Al':0.505 ,'Si': 0.402, 'P':0.305, 'S':0.274, 'Cl':0.227,  'Ar':0.185 ,
@@ -157,7 +168,14 @@ def UFF_VDW_well_depth_lib(element):
     return UFF_VDW_well_depth[element] / UnitValueLib().hartree2kcalmol
                 
 def covalent_radii_lib(element):
-    CRL = {"H": 0.32, "He": 0.46, "Li": 1.33, "Be": 1.02, "B": 0.85, "C": 0.75, "N": 0.71, "O": 0.63, "F": 0.64, "Ne": 0.67, "Na": 1.55, "Mg": 1.39, "Al":1.26, "Si": 1.16, "P": 1.11, "S": 1.03, "Cl": 0.99, "Ar": 0.96, "K": 1.96, "Ca": 1.71, "Sc": 1.48, "Ti": 1.36, "V": 1.34, "Cr": 1.22, "Mn": 1.19, "Fe": 1.16, "Co": 1.11, "Ni": 1.10, "Cu": 1.12, "Zn": 1.18, "Ga": 1.24, "Ge": 1.24, "As": 1.21, "Se": 1.16, "Br": 1.14, "Kr": 1.17, "Rb": 2.10, "Sr": 1.85, "Y": 1.63, "Zr": 1.54,"Nb": 1.47,"Mo": 1.38,"Tc": 1.28,"Ru": 1.25,"Rh": 1.25,"Pd": 1.20,"Ag": 1.28,"Cd": 1.36,"In": 1.42,"Sn": 1.40,"Sb": 1.40,"Te": 1.36,"I": 1.33,"Xe": 1.31,"Cs": 2.32,"Ba": 1.96,"La":1.80,"Ce": 1.63,"Pr": 1.76,"Nd": 1.74,"Pm": 1.73,"Sm": 1.72,"Eu": 1.68,"Gd": 1.69 ,"Tb": 1.68,"Dy": 1.67,"Ho": 1.66,"Er": 1.65,"Tm": 1.64,"Yb": 1.70,"Lu": 1.62,"Hf": 1.52,"Ta": 1.46,"W": 1.37,"Re": 1.31,"Os": 1.29,"Ir": 1.22,"Pt": 1.23,"Au": 1.24,"Hg": 1.33,"Tl": 1.44,"Pb":1.44,"Bi":1.51,"Po":1.45,"At":1.47,"Rn":1.42, 'X':1.000}#ang.
+    if element is int:
+        element = number_element(element)
+    CRL = {"H": 0.32, "He": 0.46, 
+           "Li": 1.33, "Be": 1.02, "B": 0.85, "C": 0.75, "N": 0.71, "O": 0.63, "F": 0.64, "Ne": 0.67, 
+           "Na": 1.55, "Mg": 1.39, "Al":1.26, "Si": 1.16, "P": 1.11, "S": 1.03, "Cl": 0.99, "Ar": 0.96, 
+           "K": 1.96, "Ca": 1.71, "Sc": 1.48, "Ti": 1.36, "V": 1.34, "Cr": 1.22, "Mn": 1.19, "Fe": 1.16, "Co": 1.11, "Ni": 1.10, "Cu": 1.12, "Zn": 1.18, "Ga": 1.24, "Ge": 1.24, "As": 1.21, "Se": 1.16, "Br": 1.14, "Kr": 1.17, 
+           "Rb": 2.10, "Sr": 1.85, "Y": 1.63, "Zr": 1.54,"Nb": 1.47,"Mo": 1.38,"Tc": 1.28,"Ru": 1.25,"Rh": 1.25,"Pd": 1.20,"Ag": 1.28,"Cd": 1.36,"In": 1.42,"Sn": 1.40,"Sb": 1.40,"Te": 1.36,"I": 1.33,"Xe": 1.31,
+           "Cs": 2.32,"Ba": 1.96,"La":1.80,"Ce": 1.63,"Pr": 1.76,"Nd": 1.74,"Pm": 1.73,"Sm": 1.72,"Eu": 1.68,"Gd": 1.69 ,"Tb": 1.68,"Dy": 1.67,"Ho": 1.66,"Er": 1.65,"Tm": 1.64,"Yb": 1.70,"Lu": 1.62,"Hf": 1.52,"Ta": 1.46,"W": 1.37,"Re": 1.31,"Os": 1.29,"Ir": 1.22,"Pt": 1.23,"Au": 1.24,"Hg": 1.33,"Tl": 1.44,"Pb":1.44,"Bi":1.51,"Po":1.45,"At":1.47,"Rn":1.42, 'X':1.000}#ang.
     # ref. Pekka Pyykkö; Michiko Atsumi (2009). “Molecular single-bond covalent radii for elements 1 - 118”. Chemistry: A European Journal 15: 186–197. doi:10.1002/chem.200800987. (H...Rn)
             
     return CRL[element] / UnitValueLib().bohr2angstroms#Bohr
@@ -171,10 +189,21 @@ def element_number(elem):
         "Cs": 55 ,"Ba": 56, "La": 57,"Ce":58,"Pr": 59,"Nd": 60,"Pm": 61,"Sm": 62,"Eu": 63,"Gd": 64,"Tb": 65,"Dy": 66,"Ho": 67,"Er": 68,"Tm": 69,"Yb": 70,"Lu": 71,"Hf": 72,"Ta": 73,"W": 74,"Re": 75,"Os": 76,"Ir": 77,"Pt": 78,"Au": 79,"Hg": 80,"Tl": 81,"Pb":82,"Bi":83,"Po":84,"At":85,"Rn":86}
         
     return num[elem]
-
+def number_element(num):
+    elem = {1: "H",  2:"He",
+         3:"Li", 4:"Be", 5:"B", 6:"C", 7:"N", 8:"O", 9:"F", 10:"Ne", 
+        11:"Na", 12:"Mg", 13:"Al", 14:"Si", 15:"P", 16:"S", 17:"Cl", 18:"Ar",
+        19:"K", 20:"Ca", 21:"Sc", 22:"Ti", 23:"V", 24:"Cr", 25:"Mn", 26:"Fe", 27:"Co", 28:"Ni", 29:"Cu", 30:"Zn", 31:"Ga", 32:"Ge", 33:"As", 34:"Se", 35:"Br", 36:"Kr",
+        37:"Rb", 38:"Sr", 39:"Y", 40:"Zr", 41:"Nb", 42:"Mo",43:"Tc",44:"Ru",45:"Rh", 46:"Pd", 47:"Ag", 48:"Cd", 49:"In", 50:"Sn", 51:"Sb", 52:"Te", 53:"I", 54:"Xe",
+        55:"Cs", 56:"Ba", 57:"La",58:"Ce",59:"Pr",60:"Nd",61:"Pm",62:"Sm", 63:"Eu", 64:"Gd", 65:"Tb", 66:"Dy" ,67:"Ho", 68:"Er", 69:"Tm", 70:"Yb", 71:"Lu", 72:"Hf", 73:"Ta", 74:"W", 75:"Re", 76:"Os", 77:"Ir", 78:"Pt", 79:"Au", 80:"Hg", 81:"Tl", 82:"Pb", 83:"Bi", 84:"Po", 85:"At", 86:"Rn"}
+        
+    return elem[num]
 
 def atomic_mass(elem):
-    elem_num = element_number(elem)
+    if elem is int:
+        elem_num = elem
+    else:    
+        elem_num = element_number(elem)
     mass = {1: 1.00782503223, 2: 4.00260325413,
     3: 7.0160034366, 4: 9.012183065, 5: 11.00930536, 6: 12.0, 7: 14.00307400443, 8: 15.99491461957, 9: 18.99840316273, 10: 19.9924401762,
     11: 22.989769282, 12: 23.985041697, 13: 26.98153853, 14: 27.97692653465, 15: 30.97376199842, 16: 31.9720711744, 17: 34.968852682, 18: 39.9623831237,
@@ -194,9 +223,8 @@ class UnitValueLib:
         return
 
 
-
 class CalculateMoveVector:
-    def __init__(self, DELTA, Opt_params, Model_hess, FC_COUNT=-1, temperature=0.0):
+    def __init__(self, DELTA, Opt_params, Model_hess, BPA_hessian, FC_COUNT=-1, temperature=0.0):
         self.Opt_params = Opt_params 
         self.DELTA = DELTA
         self.Model_hess = Model_hess
@@ -209,8 +237,9 @@ class CalculateMoveVector:
         self.FC_COUNT = FC_COUNT
         self.MAX_FORCE_SWITCHING_THRESHOLD = 0.0010
         self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
+        self.BPA_hessian = BPA_hessian
         
-    def calc_move_vector(self, iter, geom_num_list, new_g, opt_method_list, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list):#geom_num_list:Bohr
+    def calc_move_vector(self, iter, geom_num_list, B_g, opt_method_list, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, e, pre_e, initial_geom_num_list, g, pre_g):#geom_num_list:Bohr
         def update_trust_radii(trust_radii, dE, dE_predicted, displacement):
             if dE != 0:
                 r =  dE_predicted / dE
@@ -226,150 +255,45 @@ class CalculateMoveVector:
                 pass
                     
             return np.clip(trust_radii, 0.001, 1.0)
-            
-            
-        def TRM_FSB_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):#this function doesnt work well.
 
-            #-----------------------
-            if iter == 1:
-                self.Model_hess = Model_hess_tmp(self.Model_hess.model_hess, momentum_disp=float(self.DELTA))#momentum_disp is trust_radii.
+        def BFGS_hessian_update(hess, displacement, delta_grad):
             
-            trust_radii = self.Model_hess.momentum_disp
-            
-            aprrox_AFIR_e_shift = abs(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) + 0.5 * np.dot(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), self.Model_hess.model_hess),(geom_num_list - pre_geom).reshape( len(geom_num_list)*3,1)))
-            
-            
-            
-            #----------------------
-            
-            
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
-            displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
-            
-            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
-    
+            A = delta_grad - np.dot(hess, displacement)
+
+            delta_hess = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(hess, displacement) , displacement.T), hess.T)/ np.dot(np.dot(displacement.T, hess), displacement))
+
+            return delta_hess
+        def FSB_hessian_update(hess, displacement, delta_grad):
+
+            A = delta_grad - np.dot(hess, displacement)
             delta_hess_SR1 = np.dot(A, A.T) / np.dot(A.T, displacement) 
-            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
+            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(hess, displacement) , displacement.T), hess.T)/ np.dot(np.dot(displacement.T, hess), displacement))
             Bofill_const = np.dot(np.dot(np.dot(A.T, displacement), A.T), displacement) / np.dot(np.dot(np.dot(A.T, A), displacement.T), displacement)
             delta_hess = np.sqrt(Bofill_const)*delta_hess_SR1 + (1 - np.sqrt(Bofill_const))*delta_hess_BFGS
-            
-            new_hess = self.Model_hess.model_hess + delta_hess
-            
-            #---------------------- dogleg
-            new_g_reshape = new_g.reshape(len(geom_num_list)*3, 1)
-            ipsilon = 1e-8
-            p_u = ((np.dot(new_g_reshape.T, new_g_reshape))/(np.dot(np.dot(new_g_reshape.T, new_hess), new_g_reshape)) + ipsilon)*new_g_reshape
-            p_b = np.dot(np.linalg.inv(new_hess), new_g_reshape)
-            if np.linalg.norm(p_u) >= trust_radii:
-                move_vector = (trust_radii * (new_g_reshape/(np.linalg.norm(new_g_reshape) + ipsilon))).reshape(len(geom_num_list), 3)
-            elif np.linalg.norm(p_b) <= trust_radii:
-                move_vector = p_b.reshape(len(geom_num_list), 3)
-            else:
-                
-                tau = np.sqrt((trust_radii ** 2 - np.linalg.norm(p_u) ** 2)/(np.linalg.norm(p_b - p_u) + ipsilon) ** 2)
-                
-                print(tau)
-                
-                if tau <= 1.0:
-                    move_vector = (tau * p_u).reshape(len(geom_num_list), 3)
-                else:
-                    move_vector = ((2.0 - tau) * p_u + (tau - 1.0) * p_b).reshape(len(geom_num_list), 3)
-                
-            #---------------------
-            
-            move_vector = trust_radii * (move_vector/(np.linalg.norm(move_vector) + ipsilon))
-            
-            trust_radii = update_trust_radii(trust_radii, abs(AFIR_e - pre_AFIR_e), aprrox_AFIR_e_shift, geom_num_list - pre_geom)
-            print("trust_radii: ",trust_radii)
-            self.Model_hess = Model_hess_tmp(new_hess, momentum_disp=trust_radii)#valuable named 'momentum_disp' is trust_radii.
-            return move_vector
-    
-        def TRM_BFGS_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):#this function doesnt work well.
- 
-            if iter == 1:
-                self.Model_hess = Model_hess_tmp(self.Model_hess.model_hess, momentum_disp=float(self.DELTA))#momentum_disp is trust_radii.
-            
-            trust_radii = self.Model_hess.momentum_disp
-           
-           
-            aprrox_AFIR_e_shift = abs(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) + 0.5 * np.dot(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), self.Model_hess.model_hess),(geom_num_list - pre_geom).reshape( len(geom_num_list)*3,1)))
-            
-           
-            
-            #----------------------
-            
-            
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
-            displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
-            
 
-            #print(Model_hess.model_hess)
-            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
-            #print(A)
+            return delta_hess
 
-            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
-     
-            delta_hess = delta_hess_BFGS
-            
-                
-            move_vector = (np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
-            
-            aprrox_AFIR_e_shift = abs(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) + 0.5 * np.dot(np.dot((geom_num_list - pre_geom).reshape(1, len(geom_num_list)*3), self.Model_hess.model_hess),(geom_num_list - pre_geom).reshape(len(geom_num_list)*3,1)))
-            
-            trust_radii = update_trust_radii(trust_radii, abs(AFIR_e - pre_AFIR_e), aprrox_AFIR_e_shift, geom_num_list - pre_geom)
-            new_hess = self.Model_hess.model_hess + delta_hess
-            
-            #---------------------- dogleg
-            new_g_reshape = new_g.reshape(len(geom_num_list)*3, 1)
-            ipsilon = 1e-8
-            p_u = ((np.dot(new_g_reshape.T, new_g_reshape))/(np.dot(np.dot(new_g_reshape.T, new_hess), new_g_reshape)) + ipsilon)*new_g_reshape
-            p_b = np.dot(np.linalg.inv(new_hess), new_g_reshape)
-            if np.linalg.norm(p_u) >= trust_radii:
-                move_vector = (trust_radii*(new_g_reshape/(np.linalg.norm(new_g_reshape) + ipsilon))).reshape(len(geom_num_list), 3)
-            elif np.linalg.norm(p_b) <= trust_radii:
-                move_vector = p_b.reshape(len(geom_num_list), 3)
-            else:
-                tau = np.sqrt((trust_radii ** 2 - np.linalg.norm(p_u) ** 2)/(np.linalg.norm(p_b - p_u) + ipsilon) ** 2)
-                if tau <= 1.0:
-                    move_vector = (tau * p_u).reshape(len(geom_num_list), 3)
-                else:
-                    move_vector = ((2.0 - tau) * p_u + (tau - 1.0) * p_b).reshape(len(geom_num_list), 3)
-                
-            #---------------------
-            trust_radii = update_trust_radii(trust_radii, abs(AFIR_e - pre_AFIR_e), aprrox_AFIR_e_shift, geom_num_list - pre_geom)
-            print("trust_radii: ",trust_radii)
-            self.Model_hess = Model_hess_tmp(new_hess, momentum_disp=trust_radii)#valuable named 'momentum_disp' is trust_radii.
-            return move_vector
-        
-           
-        
-        def RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def RFO_BFGS_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_BFGS_quasi_newton_method")
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             DELTA_for_QNM = self.DELTA
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 return move_vector
                 
 
-            
-            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
-            
-
-            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
-
-            delta_hess = delta_hess_BFGS
+            delta_hess = BFGS_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
             
             
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess
+                new_hess = self.Model_hess.model_hess + delta_hess + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
             
-            matrix_for_RFO = np.append(new_hess, new_g.reshape(len(geom_num_list)*3, 1), axis=1)
-            tmp = np.array([np.append(new_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
+            matrix_for_RFO = np.append(new_hess, B_g.reshape(len(geom_num_list)*3, 1), axis=1)
+            tmp = np.array([np.append(B_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
@@ -377,11 +301,11 @@ class CalculateMoveVector:
             
 
                 
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             DELTA_for_QNM = self.DELTA
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                
                 return move_vector
@@ -392,35 +316,34 @@ class CalculateMoveVector:
             
             return move_vector
             
-        def BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def BFGS_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("BFGS_quasi_newton_method")
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                
                 return move_vector
 
             
           
-            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
            
             
-            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
+            delta_hess_BFGS = BFGS_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
 
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess_BFGS
+                new_hess = self.Model_hess.model_hess + delta_hess_BFGS + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
                 
             DELTA_for_QNM = self.DELTA
            
             
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
               
                 return move_vector 
@@ -430,33 +353,26 @@ class CalculateMoveVector:
             return move_vector
         
 
-        def RFO_FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def RFO_FSB_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_FSB_quasi_newton_method")
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             DELTA_for_QNM = self.DELTA
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 return move_vector
                 
 
-
-
-            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
-            delta_hess_SR1 = np.dot(A, A.T) / np.dot(A.T, displacement) 
-            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
-            Bofill_const = np.dot(np.dot(np.dot(A.T, displacement), A.T), displacement) / np.dot(np.dot(np.dot(A.T, A), displacement.T), displacement)
-            delta_hess = np.sqrt(Bofill_const)*delta_hess_SR1 + (1 - np.sqrt(Bofill_const))*delta_hess_BFGS
-            
+            delta_hess = FSB_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
             
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess
+                new_hess = self.Model_hess.model_hess + delta_hess + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
             
-            matrix_for_RFO = np.append(new_hess, new_g.reshape(len(geom_num_list)*3, 1), axis=1)
-            tmp = np.array([np.append(new_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
+            matrix_for_RFO = np.append(new_hess, B_g.reshape(len(geom_num_list)*3, 1), axis=1)
+            tmp = np.array([np.append(B_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
@@ -464,11 +380,11 @@ class CalculateMoveVector:
             
 
                 
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             DELTA_for_QNM = self.DELTA
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 return move_vector
                 
@@ -477,36 +393,29 @@ class CalculateMoveVector:
             self.Model_hess = Model_hess_tmp(new_hess)
             return move_vector
             
-        def FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def FSB_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("FSB_quasi_newton_method")
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 return move_vector
 
-            
-   
-            A = delta_grad - np.dot(self.Model_hess.model_hess, displacement)
-    
-            delta_hess_SR1 = np.dot(A, A.T) / np.dot(A.T, displacement) 
-            delta_hess_BFGS = (np.dot(delta_grad, delta_grad.T) / np.dot(displacement.T, delta_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, displacement) , displacement.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(displacement.T, self.Model_hess.model_hess), displacement))
-            Bofill_const = np.dot(np.dot(np.dot(A.T, displacement), A.T), displacement) / np.dot(np.dot(np.dot(A.T, A), displacement.T), displacement)
-            delta_hess = np.sqrt(Bofill_const)*delta_hess_SR1 + (1 - np.sqrt(Bofill_const))*delta_hess_BFGS
+            delta_hess = FSB_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
             
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess
+                new_hess = self.Model_hess.model_hess + delta_hess + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
             
             DELTA_for_QNM = self.DELTA
            
             
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 return move_vector 
             
@@ -515,7 +424,7 @@ class CalculateMoveVector:
             return move_vector
         
         # arXiv:2307.13744v1
-        def momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def momentum_based_BFGS(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("momentum_based_BFGS")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
@@ -528,38 +437,37 @@ class CalculateMoveVector:
                 
             beta = 0.50
             
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 
                 return move_vector
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
-            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
+            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
             
             delta_momentum_disp = (new_momentum_disp - momentum_disp).reshape(len(geom_num_list)*3, 1)
             delta_momentum_grad = (new_momentum_grad - momentum_grad).reshape(len(geom_num_list)*3, 1)
             
-            A = delta_momentum_grad - np.dot(self.Model_hess.model_hess, delta_momentum_disp)
-            
-            
-            delta_hess_BFGS = (np.dot(delta_momentum_grad, delta_momentum_grad.T) / np.dot(delta_momentum_disp.T, delta_momentum_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, delta_momentum_disp) , delta_momentum_disp.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(delta_momentum_disp.T, self.Model_hess.model_hess), delta_momentum_disp))
+
+            delta_hess_BFGS = BFGS_hessian_update(self.Model_hess.model_hess, delta_momentum_disp, delta_momentum_grad)
+
 
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess_BFGS
+                new_hess = self.Model_hess.model_hess + delta_hess_BFGS + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
             
             DELTA_for_QNM = self.DELTA
            
             
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                
                 return move_vector 
@@ -569,7 +477,7 @@ class CalculateMoveVector:
             
             return move_vector 
         
-        def momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def momentum_based_FSB(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("momentum_based_FSB")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
@@ -580,42 +488,36 @@ class CalculateMoveVector:
                 momentum_grad = self.Model_hess.momentum_grad
             beta = 0.50
             
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
               
                 return move_vector
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
-            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
+            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
             
             delta_momentum_disp = (new_momentum_disp - momentum_disp).reshape(len(geom_num_list)*3, 1)
             delta_momentum_grad = (new_momentum_grad - momentum_grad).reshape(len(geom_num_list)*3, 1)
            
-            A = delta_momentum_grad - np.dot(self.Model_hess.model_hess, delta_momentum_disp)
-          
-            
-            
-            delta_hess_SR1 = np.dot(A, A.T) / np.dot(A.T, delta_momentum_disp) 
-            delta_hess_BFGS = (np.dot(delta_momentum_grad, delta_momentum_grad.T) / np.dot(delta_momentum_disp.T, delta_momentum_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, delta_momentum_disp) , delta_momentum_disp.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(delta_momentum_disp.T, self.Model_hess.model_hess), delta_momentum_disp))
-            Bofill_const = np.dot(np.dot(np.dot(A.T, delta_momentum_disp), A.T), delta_momentum_disp) / np.dot(np.dot(np.dot(A.T, A), delta_momentum_disp.T), delta_momentum_disp)
-            delta_hess = np.sqrt(Bofill_const)*delta_hess_SR1 + (1 - np.sqrt(Bofill_const))*delta_hess_BFGS
+ 
+            delta_hess = FSB_hessian_update(self.Model_hess.model_hess, delta_momentum_disp, delta_momentum_grad)
             
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess
+                new_hess = self.Model_hess.model_hess + delta_hess + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
             
             DELTA_for_QNM = self.DELTA
            
             
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                
                 return move_vector 
@@ -625,7 +527,7 @@ class CalculateMoveVector:
             return move_vector 
                 
           
-        def RFO_momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def RFO_momentum_based_BFGS(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_momentum_based_BFGS")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
@@ -636,46 +538,46 @@ class CalculateMoveVector:
                 momentum_grad = self.Model_hess.momentum_grad
             beta = 0.5
             
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 
                 return move_vector
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
-            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
+            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
             
             delta_momentum_disp = (new_momentum_disp - momentum_disp).reshape(len(geom_num_list)*3, 1)
             delta_momentum_grad = (new_momentum_grad - momentum_grad).reshape(len(geom_num_list)*3, 1)
           
-            A = delta_momentum_grad - np.dot(self.Model_hess.model_hess, delta_momentum_disp)
+        
            
             
-            delta_hess_BFGS = (np.dot(delta_momentum_grad, delta_momentum_grad.T) / np.dot(delta_momentum_disp.T, delta_momentum_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, delta_momentum_disp) , delta_momentum_disp.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(delta_momentum_disp.T, self.Model_hess.model_hess), delta_momentum_disp))
+            delta_hess_BFGS = BFGS_hessian_update(self.Model_hess.model_hess, delta_momentum_disp, delta_momentum_grad)
 
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess_BFGS
+                new_hess = self.Model_hess.model_hess + delta_hess_BFGS + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
              
             DELTA_for_QNM = self.DELTA
 
-            matrix_for_RFO = np.append(new_hess, new_g.reshape(len(geom_num_list)*3, 1), axis=1)
-            tmp = np.array([np.append(new_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
+            matrix_for_RFO = np.append(new_hess, B_g.reshape(len(geom_num_list)*3, 1), axis=1)
+            tmp = np.array([np.append(B_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
             lambda_for_calc = min(0.0, float(eigenvalue[np.argmin(eigenvalue)]))
             
 
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                 
                 return move_vector 
@@ -684,7 +586,7 @@ class CalculateMoveVector:
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
             return move_vector 
         
-        def RFO_momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector):
+        def RFO_momentum_based_FSB(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_momentum_based_FSB")
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
@@ -695,50 +597,43 @@ class CalculateMoveVector:
                 momentum_grad = self.Model_hess.momentum_grad
             beta = 0.5
             print("beta :", beta)
-            delta_grad = (new_g - pre_g).reshape(len(geom_num_list)*3, 1)
+            delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
             if abs(displacement.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
               
                 return move_vector
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
-            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * new_g
+            new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
             
             delta_momentum_disp = (new_momentum_disp - momentum_disp).reshape(len(geom_num_list)*3, 1)
             delta_momentum_grad = (new_momentum_grad - momentum_grad).reshape(len(geom_num_list)*3, 1)
             
-            A = delta_momentum_grad - np.dot(self.Model_hess.model_hess, delta_momentum_disp)
-            
-            
-            
-            delta_hess_SR1 = np.dot(A, A.T) / np.dot(A.T, delta_momentum_disp) 
-            delta_hess_BFGS = (np.dot(delta_momentum_grad, delta_momentum_grad.T) / np.dot(delta_momentum_disp.T, delta_momentum_grad)) - (np.dot(np.dot(np.dot(self.Model_hess.model_hess, delta_momentum_disp) , delta_momentum_disp.T), self.Model_hess.model_hess.T)/ np.dot(np.dot(delta_momentum_disp.T, self.Model_hess.model_hess), delta_momentum_disp))
-            Bofill_const = np.dot(np.dot(np.dot(A.T, delta_momentum_disp), A.T), delta_momentum_disp) / np.dot(np.dot(np.dot(A.T, A), delta_momentum_disp.T), delta_momentum_disp)
-            delta_hess = np.sqrt(Bofill_const)*delta_hess_SR1 + (1 - np.sqrt(Bofill_const))*delta_hess_BFGS
+            delta_hess = FSB_hessian_update(self.Model_hess.model_hess, delta_momentum_disp, delta_momentum_grad)
             
             if iter % self.FC_COUNT != 0 or self.FC_COUNT == -1:
-                new_hess = self.Model_hess.model_hess + delta_hess
+                new_hess = self.Model_hess.model_hess + delta_hess + self.BPA_hessian
             else:
-                new_hess = self.Model_hess.model_hess
+                new_hess = self.Model_hess.model_hess + self.BPA_hessian
 
             DELTA_for_QNM = self.DELTA
             
-            matrix_for_RFO = np.append(new_hess, new_g.reshape(len(geom_num_list)*3, 1), axis=1)
-            tmp = np.array([np.append(new_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
+            matrix_for_RFO = np.append(new_hess, B_g.reshape(len(geom_num_list)*3, 1), axis=1)
+            tmp = np.array([np.append(B_g.reshape(1, len(geom_num_list)*3), 0.0)], dtype="float64")
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
             lambda_for_calc = min(0.0, float(eigenvalue[np.argmin(eigenvalue)]))
             
 
-            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), new_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
+            move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             
             if abs(move_vector.max()) > 2.0/self.bohr2angstroms:
-                move_vector = 0.1*(new_g/np.linalg.norm(new_g))
+                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
                 print("displacement is too large!!")
                
                 return move_vector 
@@ -747,23 +642,23 @@ class CalculateMoveVector:
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
             return move_vector 
         
-        def conjugate_gradient_descent(geom_num_list, pre_move_vector, new_g, pre_g):
+        def conjugate_gradient_descent(geom_num_list, pre_move_vector, B_g, pre_B_g):
             #cg method
             
-            alpha = np.dot(new_g.reshape(1, len(geom_num_list)*3), (self.Opt_params.adam_v).reshape(len(geom_num_list)*3, 1)) / np.dot(self.Opt_params.adam_v.reshape(1, len(geom_num_list)*3), self.Opt_params.adam_v.reshape(len(geom_num_list)*3, 1))
+            alpha = np.dot(B_g.reshape(1, len(geom_num_list)*3), (self.Opt_params.adam_v).reshape(len(geom_num_list)*3, 1)) / np.dot(self.Opt_params.adam_v.reshape(1, len(geom_num_list)*3), self.Opt_params.adam_v.reshape(len(geom_num_list)*3, 1))
             
             move_vector = self.DELTA * alpha * self.Opt_params.adam_v
             
-            beta = np.dot(new_g.reshape(1, len(geom_num_list)*3), (new_g - pre_g).reshape(len(geom_num_list)*3, 1)) / np.dot(pre_g.reshape(1, len(geom_num_list)*3), pre_g.reshape(len(geom_num_list)*3, 1)) ** 2 
+            beta = np.dot(B_g.reshape(1, len(geom_num_list)*3), (B_g - pre_B_g).reshape(len(geom_num_list)*3, 1)) / np.dot(pre_B_g.reshape(1, len(geom_num_list)*3), pre_B_g.reshape(len(geom_num_list)*3, 1)) ** 2 
             
-            self.Opt_params.adam_v = copy.copy(-1 * new_g + abs(beta) * self.Opt_params.adam_v)
+            self.Opt_params.adam_v = copy.copy(-1 * B_g + abs(beta) * self.Opt_params.adam_v)
             
             
             
             return move_vector
         
         #arXiv:1412.6980v9
-        def AdaMax(geom_num_list, new_g):#not worked well
+        def AdaMax(geom_num_list, B_g):#not worked well
             print("AdaMax")
             beta_m = 0.9
             beta_v = 0.999
@@ -781,8 +676,8 @@ class CalculateMoveVector:
             new_adam_v = adam_v*0.0
             
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-            new_adamax_u = max(beta_v*adamax_u, np.linalg.norm(new_g))
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+            new_adamax_u = max(beta_v*adamax_u, np.linalg.norm(B_g))
                
             move_vector = []
 
@@ -792,7 +687,7 @@ class CalculateMoveVector:
             return move_vector
             
         #https://cs229.stanford.edu/proj2015/054_report.pdf
-        def NAdam(geom_num_list, new_g):
+        def NAdam(geom_num_list, B_g):
             print("NAdam")
             mu = 0.975
             nu = 0.999
@@ -806,9 +701,9 @@ class CalculateMoveVector:
             new_adam_m_hat = []
             new_adam_v_hat = []
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(mu*adam_m[i] + (1.0 - mu)*(new_g[i]))
-                new_adam_v[i] = copy.copy((nu*adam_v[i]) + (1.0 - nu)*(new_g[i]) ** 2)
-                new_adam_m_hat.append(np.array(new_adam_m[i], dtype="float64") * ( mu / (1.0 - mu ** adam_count)) + np.array(new_g[i], dtype="float64") * ((1.0 - mu)/(1.0 - mu ** adam_count)))        
+                new_adam_m[i] = copy.copy(mu*adam_m[i] + (1.0 - mu)*(B_g[i]))
+                new_adam_v[i] = copy.copy((nu*adam_v[i]) + (1.0 - nu)*(B_g[i]) ** 2)
+                new_adam_m_hat.append(np.array(new_adam_m[i], dtype="float64") * ( mu / (1.0 - mu ** adam_count)) + np.array(B_g[i], dtype="float64") * ((1.0 - mu)/(1.0 - mu ** adam_count)))        
                 new_adam_v_hat.append(np.array(new_adam_v[i], dtype="float64") * (nu / (1.0 - nu ** adam_count)))
             
             move_vector = []
@@ -821,7 +716,7 @@ class CalculateMoveVector:
         
         #FIRE
         #Physical Review Letters, Vol. 97, 170201 (2006)
-        def FIRE(geom_num_list, new_g):#MD-like optimization method. This method tends to converge local minima.
+        def FIRE(geom_num_list, B_g):#MD-like optimization method. This method tends to converge local minima.
             print("FIRE")
             adam_count = self.Opt_params.adam_count
             N_acc = 5
@@ -840,9 +735,9 @@ class CalculateMoveVector:
             
             pre_velocity = self.Opt_params.adam_v
             
-            velocity = (1.0 - alpha) * pre_velocity + alpha * (np.linalg.norm(pre_velocity, ord=2)/np.linalg.norm(new_g, ord=2)) * new_g
+            velocity = (1.0 - alpha) * pre_velocity + alpha * (np.linalg.norm(pre_velocity, ord=2)/np.linalg.norm(B_g, ord=2)) * B_g
             
-            if adam_count > 1 and np.dot(pre_velocity.reshape(1, len(geom_num_list)*3), new_g.reshape(len(geom_num_list)*3, 1)) > 0:
+            if adam_count > 1 and np.dot(pre_velocity.reshape(1, len(geom_num_list)*3), B_g.reshape(len(geom_num_list)*3, 1)) > 0:
                 if n_reset > N_acc:
                     dt = min(dt * f_inc, dt_max)
                     alpha = alpha * f_acc
@@ -853,7 +748,7 @@ class CalculateMoveVector:
                 dt *= f_dec
                 n_reset = 0
             
-            velocity += dt*new_g
+            velocity += dt*B_g
             
             move_vector = velocity * 0.0
             move_vector = copy.copy(dt * velocity)
@@ -863,7 +758,7 @@ class CalculateMoveVector:
             return move_vector
         #RAdam
         #arXiv:1908.03265v4
-        def RADAM(geom_num_list, new_g):
+        def RADAM(geom_num_list, B_g):
             print("RADAM")
             beta_m = 0.9
             beta_v = 0.99
@@ -878,8 +773,8 @@ class CalculateMoveVector:
             new_adam_m_hat = []
             new_adam_v_hat = []
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy((beta_v*adam_v[i]) + (1.0-beta_v)*(new_g[i] - new_adam_m[i])**2) + Epsilon
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy((beta_v*adam_v[i]) + (1.0-beta_v)*(B_g[i] - new_adam_m[i])**2) + Epsilon
                 new_adam_m_hat.append(np.array(new_adam_m[i], dtype="float64")/(1.0-beta_m**adam_count))        
                 new_adam_v_hat.append(np.array(new_adam_v[i], dtype="float64")/(1.0-beta_v**adam_count))
             rho = rho_inf - (2.0*adam_count*beta_v**adam_count)/(1.0 -beta_v**adam_count)
@@ -900,7 +795,7 @@ class CalculateMoveVector:
             return move_vector
         #AdaBelief
         #ref. arXiv:2010.07468v5
-        def AdaBelief(geom_num_list, new_g):
+        def AdaBelief(geom_num_list, B_g):
             print("AdaBelief")
             beta_m = 0.9
             beta_v = 0.99
@@ -912,8 +807,8 @@ class CalculateMoveVector:
             new_adam_v = adam_v*0.0
             
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i]-new_adam_m[i])**2)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i]-new_adam_m[i])**2)
                
             move_vector = []
 
@@ -923,7 +818,7 @@ class CalculateMoveVector:
             return move_vector
         #AdaDiff
         #ref. https://iopscience.iop.org/article/10.1088/1742-6596/2010/1/012027/pdf  Dian Huang et al 2021 J. Phys.: Conf. Ser. 2010 012027
-        def AdaDiff(geom_num_list, new_g, pre_g):
+        def AdaDiff(geom_num_list, B_g, pre_B_g):
             print("AdaDiff")
             beta_m = 0.9
             beta_v = 0.999
@@ -937,8 +832,8 @@ class CalculateMoveVector:
             new_adam_m_hat = adam_m*0.0
             new_adam_v_hat = adam_v*0.0
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i])**2 + (1.0-beta_v) * (new_g[i] - pre_g[i]) ** 2)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i])**2 + (1.0-beta_v) * (B_g[i] - pre_B_g[i]) ** 2)
      
                         
             move_vector = []
@@ -954,7 +849,7 @@ class CalculateMoveVector:
         
         #EVE
         #ref.arXiv:1611.01505v3
-        def EVE(geom_num_list, new_g, AFIR_e, pre_AFIR_e, pre_g):
+        def EVE(geom_num_list, B_g, B_e, pre_B_e, pre_B_g):
             print("EVE")
             beta_m = 0.9
             beta_v = 0.999
@@ -973,8 +868,8 @@ class CalculateMoveVector:
             new_adam_m_hat = adam_m*0.0
             new_adam_v_hat = adam_v*0.0
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i])**2)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i])**2)
      
                         
             move_vector = []
@@ -983,7 +878,7 @@ class CalculateMoveVector:
                 new_adam_v_hat[i] = copy.copy((new_adam_v[i])/(1 - beta_v**adam_count))
                 
             if adam_count > 1:
-                eve_d = abs(AFIR_e - pre_AFIR_e)/ min(AFIR_e, pre_AFIR_e)
+                eve_d = abs(B_e - pre_B_e)/ min(B_e, pre_B_e)
                 eve_d_hat = np.clip(eve_d, 1/c , c)
                 eve_d_tilde = beta_d*eve_d_tilde + (1.0 - beta_d)*eve_d_hat
                 
@@ -996,7 +891,7 @@ class CalculateMoveVector:
             return move_vector
         #AdamW
         #arXiv:2302.06675v4
-        def AdamW(geom_num_list, new_g):
+        def AdamW(geom_num_list, B_g):
             print("AdamW")
             beta_m = 0.9
             beta_v = 0.999
@@ -1011,8 +906,8 @@ class CalculateMoveVector:
             new_adam_m_hat = adam_m*0.0
             new_adam_v_hat = adam_v*0.0
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i])**2)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i])**2)
      
                         
             move_vector = []
@@ -1028,7 +923,7 @@ class CalculateMoveVector:
             return move_vector
         #Adam
         #arXiv:1412.6980
-        def Adam(geom_num_list, new_g):
+        def Adam(geom_num_list, B_g):
             print("Adam")
             beta_m = 0.9
             beta_v = 0.999
@@ -1042,8 +937,8 @@ class CalculateMoveVector:
             new_adam_m_hat = adam_m*0.0
             new_adam_v_hat = adam_v*0.0
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i])**2)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i])**2)
      
                         
             move_vector = []
@@ -1058,7 +953,7 @@ class CalculateMoveVector:
             self.Opt_params = Opt_calc_tmps(new_adam_m, new_adam_v, adam_count)
             return move_vector
             
-        def third_order_momentum_Adam(geom_num_list, new_g):
+        def third_order_momentum_Adam(geom_num_list, B_g):
             print("third_order_momentum_Adam")
             #self.Opt_params.eve_d_tilde is 3rd-order momentum
             beta_m = 0.9
@@ -1081,9 +976,9 @@ class CalculateMoveVector:
             new_adam_v_hat = adam_v*0.0
             new_adam_s_hat = adam_s*0.0
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i])**2)
-                new_adam_s[i] = copy.copy(beta_s*adam_s[i] + (1.0-beta_s)*(new_g[i])**3)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i])**2)
+                new_adam_s[i] = copy.copy(beta_s*adam_s[i] + (1.0-beta_s)*(B_g[i])**3)
      
                         
             move_vector = []
@@ -1103,7 +998,7 @@ class CalculateMoveVector:
             
         #Adafactor
         #arXiv:1804.04235v1
-        def Adafactor(geom_num_list, new_g):
+        def Adafactor(geom_num_list, B_g):
             print("Adafactor")
             Epsilon_1 = 1e-08
             Epsilon_2 = self.DELTA
@@ -1120,8 +1015,8 @@ class CalculateMoveVector:
             new_adam_u = adam_u*0.0
             new_adam_u_hat = adam_u*0.0
             for i in range(len(geom_num_list)):
-                new_adam_v[i] = copy.copy(beta*adam_v[i] + (1.0-beta)*((new_g[i])**2 + np.array([1,1,1]) * Epsilon_1))
-                new_adam_u[i] = copy.copy(new_g[i]/np.sqrt(new_adam_v[i]))
+                new_adam_v[i] = copy.copy(beta*adam_v[i] + (1.0-beta)*((B_g[i])**2 + np.array([1,1,1]) * Epsilon_1))
+                new_adam_u[i] = copy.copy(B_g[i]/np.sqrt(new_adam_v[i]))
                 
                         
             move_vector = []
@@ -1137,7 +1032,7 @@ class CalculateMoveVector:
             return move_vector
         #Prodigy
         #arXiv:2306.06101v1
-        def Prodigy(geom_num_list, new_g, initial_geom_num_list):
+        def Prodigy(geom_num_list, B_g, initial_geom_num_list):
             print("Prodigy")
             beta_m = 0.9
             beta_v = 0.999
@@ -1162,11 +1057,11 @@ class CalculateMoveVector:
             new_adam_s = adam_s*0.0
             
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]*d))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(new_g[i]*d)**2)
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]*d))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(B_g[i]*d)**2)
                 
-                new_adam_s[i] = np.sqrt(beta_v)*adam_s[i] + (1.0 - np.sqrt(beta_v))*self.DELTA*new_g[i]*d**2  
-            new_adam_r = np.sqrt(beta_v)*adam_r + (1.0 - np.sqrt(beta_v))*(np.dot(new_g.reshape(1,len(new_g)*3), (initial_geom_num_list - geom_num_list).reshape(len(new_g)*3,1)))*self.DELTA*d**2
+                new_adam_s[i] = np.sqrt(beta_v)*adam_s[i] + (1.0 - np.sqrt(beta_v))*self.DELTA*B_g[i]*d**2  
+            new_adam_r = np.sqrt(beta_v)*adam_r + (1.0 - np.sqrt(beta_v))*(np.dot(B_g.reshape(1,len(B_g)*3), (initial_geom_num_list - geom_num_list).reshape(len(B_g)*3,1)))*self.DELTA*d**2
             
             new_d = float(max((new_adam_r / np.linalg.norm(new_adam_s ,ord=1)), d))
             move_vector = []
@@ -1179,7 +1074,7 @@ class CalculateMoveVector:
         
         #AdaBound
         #arXiv:1902.09843v1
-        def Adabound(geom_num_list, new_g):
+        def Adabound(geom_num_list, B_g):
             print("AdaBound")
             adam_count = self.Opt_params.adam_count
             move_vector = []
@@ -1200,8 +1095,8 @@ class CalculateMoveVector:
             Eta_hat = adam_m*0.0
             
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(new_g[i]))
-                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(np.dot(np.array([new_g[i]]).T, np.array([new_g[i]]))))
+                new_adam_m[i] = copy.copy(beta_m*adam_m[i] + (1.0-beta_m)*(B_g[i]))
+                new_adam_v[i] = copy.copy(beta_v*adam_v[i] + (1.0-beta_v)*(np.dot(np.array([B_g[i]]).T, np.array([B_g[i]]))))
                 V[i] = copy.copy(np.diag(new_adam_v[i]))
                 
                 Eta_hat[i] = copy.copy(np.clip(self.DELTA/np.sqrt(V[i]), 0.1 - (0.1/(1.0 - beta_v) ** (adam_count + 1)) ,0.1 + (0.1/(1.0 - beta_v) ** adam_count) ))
@@ -1214,7 +1109,7 @@ class CalculateMoveVector:
         
         #Adadelta
         #arXiv:1212.5701v1
-        def Adadelta(geom_num_list, new_g):#delta is not required. This method tends to converge local minima.
+        def Adadelta(geom_num_list, B_g):#delta is not required. This method tends to converge local minima.
             print("Adadelta")
             rho = 0.9
             adam_count = self.Opt_params.adam_count
@@ -1224,16 +1119,16 @@ class CalculateMoveVector:
             new_adam_v = adam_v*0.0
             Epsilon = 1e-06
             for i in range(len(geom_num_list)):
-                new_adam_m[i] = copy.copy(rho * adam_m[i] + (1.0 - rho)*(new_g[i]) ** 2)
+                new_adam_m[i] = copy.copy(rho * adam_m[i] + (1.0 - rho)*(B_g[i]) ** 2)
             move_vector = []
             
             for i in range(len(geom_num_list)):
                 if adam_count > 1:
-                    move_vector.append(new_g[i] * (np.sqrt(np.square(adam_v).mean()) + Epsilon)/(np.sqrt(np.square(new_adam_m).mean()) + Epsilon))
+                    move_vector.append(B_g[i] * (np.sqrt(np.square(adam_v).mean()) + Epsilon)/(np.sqrt(np.square(new_adam_m).mean()) + Epsilon))
                 else:
-                    move_vector.append(new_g[i])
-            if abs(np.sqrt(np.square(move_vector).mean())) < self.RMS_DISPLACEMENT_THRESHOLD and abs(np.sqrt(np.square(new_g).mean())) > self.RMS_FORCE_THRESHOLD:
-                move_vector = new_g
+                    move_vector.append(B_g[i])
+            if abs(np.sqrt(np.square(move_vector).mean())) < self.RMS_DISPLACEMENT_THRESHOLD and abs(np.sqrt(np.square(B_g).mean())) > self.RMS_FORCE_THRESHOLD:
+                move_vector = B_g
 
             for i in range(len(geom_num_list)):
                 new_adam_v[i] = copy.copy(rho * adam_v[i] + (1.0 - rho) * (move_vector[i]) ** 2)
@@ -1259,158 +1154,141 @@ class CalculateMoveVector:
         for opt_method in opt_method_list:
             # group of steepest descent
             if opt_method == "RADAM":
-                tmp_move_vector = RADAM(geom_num_list, new_g)
+                tmp_move_vector = RADAM(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "Adam":
-                tmp_move_vector = Adam(geom_num_list, new_g) 
+                tmp_move_vector = Adam(geom_num_list, B_g) 
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "Adadelta":
-                tmp_move_vector = Adadelta(geom_num_list, new_g)
+                tmp_move_vector = Adadelta(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "AdamW":
-                tmp_move_vector = AdamW(geom_num_list, new_g)
+                tmp_move_vector = AdamW(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "AdaDiff":
-                tmp_move_vector = AdaDiff(geom_num_list, new_g, pre_g)
+                tmp_move_vector = AdaDiff(geom_num_list, B_g, pre_B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "Adafactor":
-                tmp_move_vector = Adafactor(geom_num_list, new_g)
+                tmp_move_vector = Adafactor(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "AdaBelief":
-                tmp_move_vector = AdaBelief(geom_num_list, new_g)
+                tmp_move_vector = AdaBelief(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "Adabound":
-                tmp_move_vector = Adabound(geom_num_list, new_g)
+                tmp_move_vector = Adabound(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "EVE":
-                tmp_move_vector = EVE(geom_num_list, new_g, AFIR_e, pre_AFIR_e, pre_g)
+                tmp_move_vector = EVE(geom_num_list, B_g, B_e, pre_B_e, pre_B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "Prodigy":
-                tmp_move_vector = Prodigy(geom_num_list, new_g, pre_geom)#initial_geom_num_list is not assigned.
+                tmp_move_vector = Prodigy(geom_num_list, B_g, initial_geom_num_list)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "AdaMax":
-                tmp_move_vector = AdaMax(geom_num_list, new_g)
+                tmp_move_vector = AdaMax(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "NAdam":    
-                tmp_move_vector = NAdam(geom_num_list, new_g)
+                tmp_move_vector = NAdam(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "FIRE":
-                tmp_move_vector = FIRE(geom_num_list, new_g)
+                tmp_move_vector = FIRE(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
             
             elif opt_method == "third_order_momentum_Adam":
-                tmp_move_vector = third_order_momentum_Adam(geom_num_list, new_g)
+                tmp_move_vector = third_order_momentum_Adam(geom_num_list, B_g)
                 move_vector_list.append(tmp_move_vector)
                 
             elif opt_method == "CG":
                 if iter != 0:
-                    tmp_move_vector = conjugate_gradient_descent(geom_num_list, pre_move_vector, new_g, pre_g)
+                    tmp_move_vector = conjugate_gradient_descent(geom_num_list, pre_move_vector, B_g, pre_B_g)
                     move_vector_list.append(tmp_move_vector)
                 else:
-                    self.Opt_params.adam_v = copy.copy(-1 * new_g)
-                    tmp_move_vector = 0.01*new_g
+                    self.Opt_params.adam_v = copy.copy(-1 * B_g)
+                    tmp_move_vector = 0.01*B_g
                     move_vector_list.append(tmp_move_vector)
             
             # group of quasi-Newton method
             
-            elif opt_method == "TRM_FSB":
-                if iter != 0:
-                    tmp_move_vector = TRM_FSB_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-                    move_vector_list.append(tmp_move_vector)
-                    
-                else:
-                    tmp_move_vector = 0.01*new_g
-                    move_vector_list.append(tmp_move_vector)
-                    
-            elif opt_method == "TRM_BFGS":
-                if iter != 0:
-                    tmp_move_vector = TRM_BFGS_dogleg_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
-                    move_vector_list.append(tmp_move_vector)
-                    
-                else:
-                    tmp_move_vector = 0.01*new_g
-                    move_vector_list.append(tmp_move_vector)
             
             elif opt_method == "BFGS":
                 if iter != 0:
-                    tmp_move_vector = BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = BFGS_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                     
                 else:
-                    tmp_move_vector = 0.01*new_g
+                    tmp_move_vector = 0.01*B_g
                     move_vector_list.append(tmp_move_vector)
             elif opt_method == "RFO_BFGS":
                 if iter != 0:
-                    tmp_move_vector = RFO_BFGS_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = RFO_BFGS_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                     
                 else:
-                    tmp_move_vector = 0.01*new_g
+                    tmp_move_vector = 0.01*B_g
                     move_vector_list.append(tmp_move_vector)
                     
             elif opt_method == "FSB":
                 if iter != 0:
-                    tmp_move_vector = FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = FSB_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                     
                 else:
-                    tmp_move_vector = 0.01*new_g
+                    tmp_move_vector = 0.01*B_g
                     move_vector_list.append(tmp_move_vector)
                     
             elif opt_method == "RFO_FSB":
                 if iter != 0:
-                    tmp_move_vector = RFO_FSB_quasi_newton_method(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = RFO_FSB_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                 else:
-                    tmp_move_vector = 0.01*new_g
+                    tmp_move_vector = 0.01*B_g
                     move_vector_list.append(tmp_move_vector)
             elif opt_method == "mBFGS":
                 if iter != 0:
-                    tmp_move_vector = momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = momentum_based_BFGS(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                 else:
-                    tmp_move_vector = 0.01*new_g 
+                    tmp_move_vector = 0.01*B_g 
                     move_vector_list.append(tmp_move_vector)
             elif opt_method == "mFSB":
                 if iter != 0:
-                    tmp_move_vector = momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = momentum_based_FSB(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                 else:
-                    tmp_move_vector = 0.01*new_g 
+                    tmp_move_vector = 0.01*B_g 
                     move_vector_list.append(tmp_move_vector)
             elif opt_method == "RFO_mBFGS":
                 if iter != 0:
-                    tmp_move_vector = RFO_momentum_based_BFGS(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = RFO_momentum_based_BFGS(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                 else:
-                    tmp_move_vector = 0.01*new_g 
+                    tmp_move_vector = 0.01*B_g 
                     move_vector_list.append(tmp_move_vector)
             elif opt_method == "RFO_mFSB":
                 if iter != 0:
-                    tmp_move_vector = RFO_momentum_based_FSB(geom_num_list, new_g, pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector)
+                    tmp_move_vector = RFO_momentum_based_FSB(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g)
                     move_vector_list.append(tmp_move_vector)
                 else:
-                    tmp_move_vector = 0.01*new_g 
+                    tmp_move_vector = 0.01*B_g 
                     move_vector_list.append(tmp_move_vector)
             else:
                 print("optimization method that this program is not sppourted is selected... thus, default method is selected.")
-                tmp_move_vector = AdaBelief(geom_num_list, new_g)
+                tmp_move_vector = AdaBelief(geom_num_list, B_g)
         #---------------------------------
         
         if len(move_vector_list) > 1:
-            if abs(new_g.max()) < self.MAX_FORCE_SWITCHING_THRESHOLD and abs(np.sqrt(np.square(new_g).mean())) < self.RMS_FORCE_SWITCHING_THRESHOLD:
+            if abs(B_g.max()) < self.MAX_FORCE_SWITCHING_THRESHOLD and abs(np.sqrt(np.square(B_g).mean())) < self.RMS_FORCE_SWITCHING_THRESHOLD:
                 move_vector = copy.copy(move_vector_list[1])
                 print("Chosen method: ", opt_method_list[1])
             else:
@@ -1435,1418 +1313,520 @@ class CalculateMoveVector:
         new_geometry = (geom_num_list - move_vector) * self.bohr2angstroms
         
         return new_geometry, np.array(move_vector, dtype="float64"), iter, self.Opt_params, self.Model_hess
+#---------------------
+
+#---------------------
+#bias potential calculation section
+class LJRepulsivePotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    
+    def calc_energy_scale(self, geom_num_list):#geom_num_list: torch.float64
+        """
+        # required variables: self.config["repulsive_potential_well_scale"], 
+                             self.config["repulsive_potential_dist_scale"], 
+                             self.config["repulsive_potential_Fragm_1"],
+                             self.config["repulsive_potential_Fragm_2"]
+                             self.config["element_list"]
+        """
+        energy = 0.0
+
+        for i, j in itertools.product(self.config["repulsive_potential_Fragm_1"], self.config["repulsive_potential_Fragm_2"]):
+            UFF_VDW_well_depth = math.sqrt(self.config["repulsive_potential_well_scale"]*UFF_VDW_well_depth_lib(self.config["element_list"][i-1]) + self.config["repulsive_potential_well_scale"]*UFF_VDW_well_depth_lib(self.config["element_list"][j-1]))
+            UFF_VDW_distance = math.sqrt(UFF_VDW_distance_lib(self.config["element_list"][i-1])*self.config["repulsive_potential_dist_scale"] + UFF_VDW_distance_lib(self.config["element_list"][j-1])*self.config["repulsive_potential_dist_scale"])
+            vector = torch.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
+            energy += UFF_VDW_well_depth * ( -2 * ( UFF_VDW_distance / vector ) ** 6 + ( UFF_VDW_distance / vector ) ** 12)
+            
+        return energy
+    
+    def calc_energy_value(self, geom_num_list):#geom_num_list: torch.float64
+        """
+        # required variables: self.config["repulsive_potential_well_value"], 
+                             self.config["repulsive_potential_dist_value"], 
+                             self.config["repulsive_potential_Fragm_1"],
+                             self.config["repulsive_potential_Fragm_2"]
+                             self.config["element_list"]
+        """
+        energy = 0.0
+
+        for i, j in itertools.product(self.config["repulsive_potential_Fragm_1"], self.config["repulsive_potential_Fragm_2"]):
+            UFF_VDW_well_depth = self.config["repulsive_potential_well_value"]/self.hartree2kjmol
+            UFF_VDW_distance = self.config["repulsive_potential_dist_value"]/self.bohr2angstroms
+            vector = torch.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
+            energy += UFF_VDW_well_depth * ( -2 * ( UFF_VDW_distance / vector ) ** 6 + ( UFF_VDW_distance / vector ) ** 12)
+            
+        return
+    
+    def calc_energy_scale_v2(self, geom_num_list):
+        """
+        # required variables: self.config["repulsive_potential_v2_well_scale"], 
+                             self.config["repulsive_potential_v2_dist_scale"], 
+                             self.config["repulsive_potential_v2_length"],
+                             self.config["repulsive_potential_v2_const_rep"]
+                             self.config["repulsive_potential_v2_const_attr"], 
+                             self.config["repulsive_potential_v2_order_rep"], 
+                             self.config["repulsive_potential_v2_order_attr"],
+                             self.config["repulsive_potential_v2_center"]
+                             self.config["repulsive_potential_v2_target"]
+                             self.config["element_list"]
+        """
+        energy = 0.0
         
+        LJ_pot_center = geom_num_list[self.config["repulsive_potential_v2_center"][1]-1] + (self.config["repulsive_potential_v2_length"]/self.bohr2angstroms) * (geom_num_list[self.config["repulsive_potential_v2_length"][1]-1] - geom_num_list[self.config["repulsive_potential_v2_length"][0]-1] / torch.linalg.norm(geom_num_list[self.config["repulsive_potential_v2_length"][1]-1] - geom_num_list[self.config["repulsive_potential_v2_length"][0]-1])) 
+        for i in self.config["repulsive_potential_v2_target"]:
+            UFF_VDW_well_depth = math.sqrt(self.config["repulsive_potential_v2_well_scale"]*UFF_VDW_well_depth_lib(self.config["element_list"][self.config["repulsive_potential_v2_center"][1]-1]) * UFF_VDW_well_depth_lib(self.config["element_list"][i-1]))
+            UFF_VDW_distance = math.sqrt(UFF_VDW_distance_lib(self.config["element_list"][self.config["repulsive_potential_v2_center"][1]-1])*self.config["repulsive_potential_v2_dist_scale"] * UFF_VDW_distance_lib(self.config["repulsive_potential_v2_center"][i-1]))
+            
+            vector = torch.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
+            energy += UFF_VDW_well_depth * ( abs(self.config["repulsive_potential_v2_const_rep"]) * ( UFF_VDW_distance / vector ) ** self.config["repulsive_potential_v2_order_rep"] -1 * abs(self.config["repulsive_potential_v2_const_attr"]) * ( UFF_VDW_distance / vector ) ** self.config["repulsive_potential_v2_order_attr"])
+            
+        return energy
+    def calc_energy_value_v2(self, geom_num_list):
+
+        """
+        # required variables: self.config["repulsive_potential_v2_well_value"], 
+                             self.config["repulsive_potential_v2_dist_value"], 
+                             self.config["repulsive_potential_v2_length"],
+                             self.config["repulsive_potential_v2_const_rep"]
+                             self.config["repulsive_potential_v2_const_attr"], 
+                             self.config["repulsive_potential_v2_order_rep"], 
+                             self.config["repulsive_potential_v2_order_attr"],
+                             self.config["repulsive_potential_v2_center"]
+                             self.config["repulsive_potential_v2_target"]
+                             self.config["element_list"]
+        """
+        energy = 0.0
+        
+        LJ_pot_center = geom_num_list[self.config["repulsive_potential_v2_center"][1]-1] + (self.config["repulsive_potential_v2_length"]/self.bohr2angstroms) * (geom_num_list[self.config["repulsive_potential_v2_length"][1]-1] - geom_num_list[self.config["repulsive_potential_v2_length"][0]-1] / torch.linalg.norm(geom_num_list[self.config["repulsive_potential_v2_length"][1]-1] - geom_num_list[self.config["repulsive_potential_v2_length"][0]-1])) 
+        for i in self.config["repulsive_potential_v2_target"]:
+            UFF_VDW_well_depth = math.sqrt(self.config["repulsive_potential_v2_well_value"]/self.hartree2kjmol * UFF_VDW_well_depth_lib(self.config["element_list"][i-1]))
+            UFF_VDW_distance = math.sqrt(self.config["repulsive_potential_v2_dist_value"]/self.bohr2angstroms * UFF_VDW_distance_lib(self.config["repulsive_potential_v2_center"][i-1]))
+            
+            vector = torch.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
+            energy += UFF_VDW_well_depth * ( abs(self.config["repulsive_potential_v2_const_rep"]) * ( UFF_VDW_distance / vector ) ** self.config["repulsive_potential_v2_order_rep"] -1 * abs(self.config["repulsive_potential_v2_const_attr"]) * ( UFF_VDW_distance / vector ) ** self.config["repulsive_potential_v2_order_attr"])
+            
+        return energy 
+       
+class AFIRPotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["AFIR_gamma"], 
+                             self.config["AFIR_Fragm_1"], 
+                             self.config["AFIR_Fragm_2"],
+                             self.config["element_list"]
+        """
+        """
+        ###  Reference  ###
+            Chem. Rec., 2016, 16, 2232
+            J. Comput. Chem., 2018, 39, 233
+            WIREs Comput. Mol. Sci., 2021, 11, e1538
+        """
+        R_0 = 3.8164/self.bohr2angstroms #ang.→bohr
+        EPSIRON = 1.0061/self.hartree2kjmol #kj/mol→hartree
+        if self.config["AFIR_gamma"] > 0.0 or self.config["AFIR_gamma"] < 0.0:
+            alpha = (self.config["AFIR_gamma"]/self.hartree2kjmol) / ((2 ** (-1/6) - (1 + math.sqrt(1 + (abs(self.config["AFIR_gamma"]/self.hartree2kjmol) / EPSIRON))) ** (-1/6))*R_0) #hartree/Bohr
+        else:
+            alpha = 0.0
+        A = 0.0
+        B = 0.0
+        
+        p = 6.0
+
+        for i, j in itertools.product(self.config["AFIR_Fragm_1"], self.config["AFIR_Fragm_2"]):
+            R_i = covalent_radii_lib(self.config["element_list"][i-1])
+            R_j = covalent_radii_lib(self.config["element_list"][j-1])
+            vector = torch.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
+            omega = ((R_i + R_j) / vector) ** p #no unit
+            A += omega * vector
+            B += omega
+        
+        energy = alpha*(A/B)#A/B:Bohr
+        return energy #hartree
+      
+class StructKeepPotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["keep_pot_spring_const"], 
+                             self.config["keep_pot_distance"], 
+                             self.config["keep_pot_atom_pairs"],
+                             
+        """
+        vector = torch.linalg.norm((geom_num_list[self.config["keep_pot_atom_pairs"][0]-1] - geom_num_list[self.config["keep_pot_atom_pairs"][1]-1]), ord=2)
+        energy = 0.5 * self.config["keep_pot_spring_const"] * (vector - self.config["keep_pot_distance"]/self.bohr2angstroms) ** 2
+        return energy #hartree
+
+class StructAnharmonicKeepPotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["anharmonic_keep_pot_spring_const"],
+                              self.config["anharmonic_keep_pot_potential_well_depth"]
+                              self.config["anharmonic_keep_pot_atom_pairs"]
+                              self.config["anharmonic_keep_pot_distance"]
+
+        """
+        vector = torch.linalg.norm((geom_num_list[self.config["anharmonic_keep_pot_atom_pairs"][0]-1] - geom_num_list[self.config["anharmonic_keep_pot_atom_pairs"][1]-1]), ord=2)
+        if self.config["anharmonic_keep_pot_potential_well_depth"] != 0.0:
+            energy = self.config["anharmonic_keep_pot_potential_well_depth"] * ( 1.0 - torch.exp( - math.sqrt(self.config["anharmonic_keep_pot_spring_const"] / (2 * self.config["anharmonic_keep_pot_potential_well_depth"])) * (vector - self.config["anharmonic_keep_pot_distance"]/self.bohr2angstroms)) ) ** 2
+        else:
+            energy = torch.tensor(0.0, requires_grad=True, dtype=torch.float64)
+
+        return energy
+
+class StructKeepAnglePotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["keep_angle_atom_pairs"],
+                              self.config["keep_angle_spring_const"]
+                              self.config["keep_angle_angle"]
+
+        """
+       
+        vector1 = geom_num_list[self.config["keep_angle_atom_pairs"][0]-1] - geom_num_list[self.config["keep_angle_atom_pairs"][1]-1]
+        vector2 = geom_num_list[self.config["keep_angle_atom_pairs"][2]-1] - geom_num_list[self.config["keep_angle_atom_pairs"][1]-1]
+        magnitude1 = torch.linalg.norm(vector1)
+        magnitude2 = torch.linalg.norm(vector2)
+        dot_product = torch.matmul(vector1, vector2)
+        cos_theta = dot_product / (magnitude1 * magnitude2)
+        theta = torch.arccos(cos_theta)
+        energy = 0.5 * self.config["keep_angle_spring_const"] * (theta - torch.deg2rad(torch.tensor(self.config["keep_angle_angle"]))) ** 2
+        return energy #hartree
+
+class StructKeepDihedralAnglePotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["keep_dihedral_angle_spring_const"],
+                              self.config["keep_dihedral_angle_atom_pairs"]
+                              self.config["keep_dihedral_angle_angle"]
+                        
+        """
+        a1 = geom_num_list[self.config["keep_dihedral_angle_atom_pairs"][1]-1] - geom_num_list[self.config["keep_dihedral_angle_atom_pairs"][0]-1]
+        a2 = geom_num_list[self.config["keep_dihedral_angle_atom_pairs"][2]-1] - geom_num_list[self.config["keep_dihedral_angle_atom_pairs"][1]-1]
+        a3 = geom_num_list[self.config["keep_dihedral_angle_atom_pairs"][3]-1] - geom_num_list[self.config["keep_dihedral_angle_atom_pairs"][2]-1]
+
+        v1 = torch.cross(a1, a2)
+        v1 = v1 / torch.linalg.norm(v1, ord=2)
+        v2 = torch.cross(a2, a3)
+        v2 = v2 / torch.linalg.norm(v2, ord=2)
+        angle = torch.arccos((v1*v2).sum(-1) / ((v1**2).sum() * (v2**2).sum())**0.5)
+
+        energy = 0.5 * self.config["keep_dihedral_angle_spring_const"] * (angle - torch.deg2rad(torch.tensor(self.config["keep_dihedral_angle_angle"]))) ** 2
+        
+        return energy #hartree    
+
+class VoidPointPotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["void_point_pot_spring_const"],
+                              self.config["void_point_pot_atoms"]
+                              self.config["void_point_pot_coord"]  #need to convert tensor type 
+                              
+                              self.config["void_point_pot_distance"]
+                              self.config["void_point_pot_order"]
+                        
+        """
+        vector = torch.linalg.norm((geom_num_list[self.config["void_point_pot_atoms"]-1] - self.config["void_point_pot_coord"]), ord=2)
+        energy = (1 / self.config["void_point_pot_order"]) * self.config["void_point_pot_spring_const"] * (vector - self.config["void_point_pot_distance"]/self.bohr2angstroms) ** self.config["void_point_pot_order"]
+        return energy #hartree
+
+class WellPotential:
+    def __init__(self, **kwarg):
+        self.config = kwarg
+        UVL = UnitValueLib()
+        self.hartree2kcalmol = UVL.hartree2kcalmol 
+        self.bohr2angstroms = UVL.bohr2angstroms 
+        self.hartree2kjmol = UVL.hartree2kjmol 
+        return
+    
+    def calc_energy(self, geom_num_list):
+        """
+        # required variables: self.config["well_pot_wall_energy"]
+                              self.config["well_pot_atom_pair"]
+                              self.config["well_pot_limit_dist"]
+        """
+        vec_norm = torch.linalg.norm(geom_num_list[self.config["well_pot_atom_pair"][0]-1] - geom_num_list[self.config["well_pot_atom_pair"][1]-1]) 
+        a = float(self.config["well_pot_limit_dist"][0]) / self.bohr2angstroms
+        b = float(self.config["well_pot_limit_dist"][1]) / self.bohr2angstroms
+        c = float(self.config["well_pot_limit_dist"][2]) / self.bohr2angstroms
+        d = float(self.config["well_pot_limit_dist"][3]) / self.bohr2angstroms
+        short_dist_linear_func_slope = 0.5 / (b - a)
+        short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+        long_dist_linear_func_slope = 0.5 / (c - d)
+        long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
+
+        x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+        x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+
+        if vec_norm <= a:
+            energy = (self.config["well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_short + 2.875)
+            
+        elif a < vec_norm and vec_norm <= b:
+            energy = (self.config["well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5)
+                
+        elif b < vec_norm and vec_norm < c:
+            energy = torch.tensor(0.0, requires_grad=True, dtype=torch.float64)
+            
+        elif c <= vec_norm and vec_norm < d:
+            energy = (self.config["well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5)
+            
+        elif d <= vec_norm:
+            energy = (self.config["well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_long + 2.875)
+            
+        else:
+            print("well pot error")
+            raise "well pot error"
+        #print(energy)
+        return energy
+    
 class BiasPotentialCalculation:
     def __init__(self, Model_hess, FC_COUNT):
+        torch.set_printoptions(precision=12)
         UVL = UnitValueLib()
         self.hartree2kcalmol = UVL.hartree2kcalmol #
         self.bohr2angstroms = UVL.bohr2angstroms #
         self.hartree2kjmol = UVL.hartree2kjmol #
         self.Model_hess = Model_hess
         self.FC_COUNT = FC_COUNT
-        
-    def main(self, e, g, geom_num_list, element_list,  force_data, pre_g, iter, GeoInfo):
+    
+    def ndarray2tensor(self, ndarray):
+        tensor = copy.copy(torch.tensor(ndarray, dtype=torch.float64, requires_grad=True))
+
+        return tensor
+
+    def tensor2ndarray(self, tensor):
+        ndarray = copy.copy(tensor.detach().numpy())
+        return ndarray
+    
+
+
+    def main(self, e, g, geom_num_list, element_list,  force_data, pre_B_g, iter, GeoInfo):
         numerical_derivative_delta = 0.0001 #unit:Bohr
         initial_geom_num_list = GeoInfo.geometry_list[0]
         #g:hartree/Bohr
         #e:hartree
         #geom_num_list:Bohr
 
-        def calc_LJ_Repulsive_pot(geom_num_list, well_scale , dist_scale, fragm_1, fragm_2, element_list):  
-            energy = 0.0
-            for i, j in itertools.product(fragm_1, fragm_2):
-                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[i-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[j-1]))
-                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[i-1])*dist_scale + UFF_VDW_distance_lib(element_list[j-1])*dist_scale)
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                energy += UFF_VDW_well_depth * ( -2 * ( UFF_VDW_distance / vector ) ** 6 + ( UFF_VDW_distance / vector ) ** 12)
-                
-            return energy
-        
-            
-        def calc_LJ_Repulsive_pot_grad(geom_num_list, well_scale , dist_scale, fragm_1, fragm_2, element_list):
-            grad = geom_num_list*0.0
-            for i, j in itertools.product(fragm_1, fragm_2):
-                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[i-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[j-1]))
-                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[i-1])*dist_scale + UFF_VDW_distance_lib(element_list[j-1])*dist_scale)
-                
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                
-                grad_x_1 = 12 * UFF_VDW_well_depth * (( ( UFF_VDW_distance ** 6 / vector ** 8 ) - ( UFF_VDW_distance ** 12 / vector ** 14 ) ) * (geom_num_list[i-1][0] - geom_num_list[j-1][0])) 
-                grad_y_1 = 12 * UFF_VDW_well_depth * (( ( UFF_VDW_distance ** 6 / vector ** 8 ) - ( UFF_VDW_distance ** 12 / vector ** 14 ) ) * (geom_num_list[i-1][1] - geom_num_list[j-1][1])) 
-                grad_z_1 = 12 * UFF_VDW_well_depth * (( ( UFF_VDW_distance ** 6 / vector ** 8 ) - ( UFF_VDW_distance ** 12 / vector ** 14 ) ) * (geom_num_list[i-1][2] - geom_num_list[j-1][2])) 
-
-                grad[i-1] += np.array([grad_x_1,grad_y_1,grad_z_1], dtype="float64") #hartree/Bohr
-                grad[j-1] += np.array([-1.0 * grad_x_1, -1.0 * grad_y_1, -1.0 * grad_z_1], dtype="float64") #hartree/Bohr
-                
-            return grad
-   
-   
-        def calc_LJ_Repulsive_pot_hess(geom_num_list, well_scale , dist_scale, fragm_1, fragm_2, element_list, hessian):
-            
-            for i, j in itertools.product(fragm_1, fragm_2):
-                tmp_hess = hessian*0.0
-                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[i-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[j-1]))
-                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[i-1])*dist_scale + UFF_VDW_distance_lib(element_list[j-1])*dist_scale)
-                
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                
-                hessian_x1x1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][0] - geom_num_list[j-1][0]) ** 2 * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)) + ((UFF_VDW_distance ** 6 / vector ** 8) - (UFF_VDW_distance ** 12 / vector ** 14)))
-                hessian_x1y1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][0] - geom_num_list[j-1][0]) * (geom_num_list[i-1][1] - geom_num_list[j-1][1]) * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)))
-                hessian_x1z1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][0] - geom_num_list[j-1][0]) * (geom_num_list[i-1][2] - geom_num_list[j-1][2]) * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)))
-                hessian_x1x2 = -1 * hessian_x1x1
-                hessian_x1y2 = -1 * hessian_x1y1
-                hessian_x1z2 = -1 * hessian_x1z1
-                
-                hessian_y1x1 = hessian_x1y1
-                hessian_y1y1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][1] - geom_num_list[j-1][1]) ** 2 * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)) + ((UFF_VDW_distance ** 6 / vector ** 8) - (UFF_VDW_distance ** 12 / vector ** 14)))
-                hessian_y1z1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][1] - geom_num_list[j-1][1]) * (geom_num_list[i-1][2] - geom_num_list[j-1][2]) * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)))
-                hessian_y1x2 = -1 * hessian_y1x1
-                hessian_y1y2 = -1 * hessian_y1y1
-                hessian_y1z2 = -1 * hessian_y1z1
-                
-                hessian_z1x1 = hessian_x1z1
-                hessian_z1y1 = hessian_y1z1
-                hessian_z1z1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][2] - geom_num_list[j-1][2]) ** 2 * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)) + ((UFF_VDW_distance ** 6 / vector ** 8) - (UFF_VDW_distance ** 12 / vector ** 14)))
-                hessian_z1x2 = -1 * hessian_z1x1
-                hessian_z1y2 = -1 * hessian_z1y1
-                hessian_z1z2 = -1 * hessian_z1z1 
-                
-                hessian_x2x1 = hessian_x1x2
-                hessian_x2y1 = hessian_y1x2
-                hessian_x2z1 = hessian_z1x2
-                hessian_x2x2 = -1 * hessian_x2x1
-                hessian_x2y2 = -1 * hessian_x2y1
-                hessian_x2z2 = -1 * hessian_x2z1
-
-                hessian_y2x1 = hessian_x1y2
-                hessian_y2y1 = hessian_y1y2
-                hessian_y2z1 = hessian_z1y2
-                hessian_y2x2 = -1 * hessian_y2x1
-                hessian_y2y2 = -1 * hessian_y2y1
-                hessian_y2z2 = -1 * hessian_y2z1
-                
-                hessian_z2x1 = hessian_x1z2
-                hessian_z2y1 = hessian_y1z2
-                hessian_z2z1 = hessian_z1z2
-                hessian_z2x2 = -1 * hessian_z2x1
-                hessian_z2y2 = -1 * hessian_z2y1
-                hessian_z2z2 = -1 * hessian_z2z1
-
-
-                tmp_hess[3*(i-1)+0][3*(i-1)+0] = copy.copy(hessian_x1x1)
-                tmp_hess[3*(i-1)+0][3*(i-1)+1] = copy.copy(hessian_x1y1)
-                tmp_hess[3*(i-1)+0][3*(i-1)+2] = copy.copy(hessian_x1z1)
-                tmp_hess[3*(i-1)+0][3*(j-1)+0] = copy.copy(hessian_x1x2)
-                tmp_hess[3*(i-1)+0][3*(j-1)+1] = copy.copy(hessian_x1y2)
-                tmp_hess[3*(i-1)+0][3*(j-1)+2] = copy.copy(hessian_x1z2)
-                
-                tmp_hess[3*(i-1)+1][3*(i-1)+0] = copy.copy(hessian_y1x1)
-                tmp_hess[3*(i-1)+1][3*(i-1)+1] = copy.copy(hessian_y1y1)
-                tmp_hess[3*(i-1)+1][3*(i-1)+2] = copy.copy(hessian_y1z1)
-                tmp_hess[3*(i-1)+1][3*(j-1)+0] = copy.copy(hessian_y1x2)
-                tmp_hess[3*(i-1)+1][3*(j-1)+1] = copy.copy(hessian_y1y2)
-                tmp_hess[3*(i-1)+1][3*(j-1)+2] = copy.copy(hessian_y1z2)
-                
-                tmp_hess[3*(i-1)+2][3*(i-1)+0] = copy.copy(hessian_z1x1)
-                tmp_hess[3*(i-1)+2][3*(i-1)+1] = copy.copy(hessian_z1y1)
-                tmp_hess[3*(i-1)+2][3*(i-1)+2] = copy.copy(hessian_z1z1)
-                tmp_hess[3*(i-1)+2][3*(j-1)+0] = copy.copy(hessian_z1x2)
-                tmp_hess[3*(i-1)+2][3*(j-1)+1] = copy.copy(hessian_z1y2)
-                tmp_hess[3*(i-1)+2][3*(j-1)+2] = copy.copy(hessian_z1z2)
-                
-                tmp_hess[3*(j-1)+0][3*(i-1)+0] = copy.copy(hessian_x2x1)
-                tmp_hess[3*(j-1)+0][3*(i-1)+1] = copy.copy(hessian_x2y1)
-                tmp_hess[3*(j-1)+0][3*(i-1)+2] = copy.copy(hessian_x2z1)
-                tmp_hess[3*(j-1)+0][3*(j-1)+0] = copy.copy(hessian_x2x2)
-                tmp_hess[3*(j-1)+0][3*(j-1)+1] = copy.copy(hessian_x2y2)
-                tmp_hess[3*(j-1)+0][3*(j-1)+2] = copy.copy(hessian_x2z2)
-                
-                tmp_hess[3*(j-1)+1][3*(i-1)+0] = copy.copy(hessian_y2x1)
-                tmp_hess[3*(j-1)+1][3*(i-1)+1] = copy.copy(hessian_y2y1)
-                tmp_hess[3*(j-1)+1][3*(i-1)+2] = copy.copy(hessian_y2z1)
-                tmp_hess[3*(j-1)+1][3*(j-1)+0] = copy.copy(hessian_y2x2)
-                tmp_hess[3*(j-1)+1][3*(j-1)+1] = copy.copy(hessian_y2y2)
-                tmp_hess[3*(j-1)+1][3*(j-1)+2] = copy.copy(hessian_y2z2)
-                
-                tmp_hess[3*(j-1)+2][3*(i-1)+0] = copy.copy(hessian_z2x1)
-                tmp_hess[3*(j-1)+2][3*(i-1)+1] = copy.copy(hessian_z2y1)
-                tmp_hess[3*(j-1)+2][3*(i-1)+2] = copy.copy(hessian_z2z1)
-                tmp_hess[3*(j-1)+2][3*(j-1)+0] = copy.copy(hessian_z2x2)
-                tmp_hess[3*(j-1)+2][3*(j-1)+1] = copy.copy(hessian_z2y2)
-                tmp_hess[3*(j-1)+2][3*(j-1)+2] = copy.copy(hessian_z2z2)
-            
-                hessian = hessian + tmp_hess
-            
-            return hessian
-   
-   
-
-        def calc_AFIR_pot(geom_num_list, gamma, fragm_1, fragm_2, element_list):
-            """
-            ###  Reference  ###
-             Chem. Rec., 2016, 16, 2232
-             J. Comput. Chem., 2018, 39, 233
-             WIREs Comput. Mol. Sci., 2021, 11, e1538
-            """
-            R_0 = 3.8164/self.bohr2angstroms #ang.→bohr
-            EPSIRON = 1.0061/self.hartree2kjmol #kj/mol→hartree
-            if gamma > 0.0 or gamma < 0.0:
-                alpha = (gamma/self.hartree2kjmol) / ((2 ** (-1/6) - (1 + np.sqrt(1 + (abs(gamma/self.hartree2kjmol) / EPSIRON))) ** (-1/6))*R_0) #hartree/Bohr
-            else:
-                alpha = 0.0
-            A = 0.0
-            B = 0.0
-            
-            p = 6.0
-
-            for i, j in itertools.product(fragm_1, fragm_2):
-                R_i = covalent_radii_lib(element_list[i-1])
-                R_j = covalent_radii_lib(element_list[j-1])
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                omega = ((R_i + R_j) / vector) ** p #no unit
-                A += omega * vector
-                B += omega
-            
-            energy = alpha*(A/B)#A/B:Bohr
-            return energy #hartree
-        
-        def calc_AFIR_grad(geom_num_list, gamma, fragm_1, fragm_2, element_list):
-            grad = geom_num_list*0.0
-            R_0 = 3.8164/self.bohr2angstroms #ang.→bohr
-            EPSIRON = 1.0061/self.hartree2kjmol #kj/mol→hartree
-            
-            if gamma > 0.0 or gamma < 0.0:
-                alpha = (gamma/self.hartree2kjmol) / ((2 ** (-1/6) - (1 + np.sqrt(1 + (abs(gamma/self.hartree2kjmol) / EPSIRON))) ** (-1/6))*R_0) #hartree/Bohr
-            else:
-                alpha = 0.0
-                
-            A = 0.0
-            B = 0.0
-            p = 6.0
-
-            for i, j in itertools.product(fragm_1, fragm_2):
-                R_i = covalent_radii_lib(element_list[i-1])
-                R_j = covalent_radii_lib(element_list[j-1])
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                omega = ((R_i + R_j) / vector) ** p #no unit
-                A += omega * vector
-                B += omega
-                
-            for i, j in itertools.product(fragm_1, fragm_2):
-                R_i = covalent_radii_lib(element_list[i-1])
-                R_j = covalent_radii_lib(element_list[j-1])
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                omega = ((R_i + R_j) / vector) ** p 
-                
-                C_x = (1 - p) * omega * ((geom_num_list[i-1][0] - geom_num_list[j-1][0]) / vector)     
-                C_y = (1 - p) * omega * ((geom_num_list[i-1][1] - geom_num_list[j-1][1]) / vector)      
-                C_z = (1 - p) * omega * ((geom_num_list[i-1][2] - geom_num_list[j-1][2]) / vector)
-                D_x = -1 * p * omega * ((geom_num_list[i-1][0] - geom_num_list[j-1][0]) / vector ** 2)   
-                D_y = -1 * p * omega * ((geom_num_list[i-1][1] - geom_num_list[j-1][1]) / vector ** 2)   
-                D_z = -1 * p * omega * ((geom_num_list[i-1][2] - geom_num_list[j-1][2]) / vector ** 2)   
-            
-                grad[i-1] += alpha * np.array([(C_x/B) - ((D_x*A)/B ** 2), (C_y/B) - ((D_y*A)/B ** 2), (C_z/B) - ((D_z*A)/B ** 2)]  ,dtype="float64")
-                grad[j-1] -= alpha * np.array([(C_x/B) - ((D_x*A)/B ** 2), (C_y/B) - ((D_y*A)/B ** 2), (C_z/B) - ((D_z*A)/B ** 2)]  ,dtype="float64")
-                
-            
-            return grad
-        
-       
-        def calc_AFIR_hess(geom_num_list, gamma, fragm_1, fragm_2, element_list, hessian):
-            R_0 = 3.8164/self.bohr2angstroms #ang.→bohr
-            EPSIRON = 1.0061/self.hartree2kjmol #kj/mol→hartree
-            tmp_hess = (hessian*0.0).tolist()
-            if gamma > 0.0 or gamma < 0.0:
-                alpha = (gamma/self.hartree2kjmol) / ((2 ** (-1/6) - (1 + np.sqrt(1 + (abs(gamma/self.hartree2kjmol) / EPSIRON))) ** (-1/6))*R_0) #hartree/Bohr
-            else:
-                alpha = 0.0
-                
-            A = 0.0
-            B = 0.0
-            p = 6.0
-
-            for i, j in itertools.product(fragm_1, fragm_2):
-                R_i = covalent_radii_lib(element_list[i-1])
-                R_j = covalent_radii_lib(element_list[j-1])
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                omega = ((R_i + R_j) / vector) ** p #no unit
-                A += omega * vector
-                B += omega
-            
-            for i, j in itertools.product(fragm_1, fragm_2):
-                R_i = covalent_radii_lib(element_list[i-1])
-                R_j = covalent_radii_lib(element_list[j-1])
-                vector = np.linalg.norm(geom_num_list[i-1] - geom_num_list[j-1], ord=2) #bohr
-                omega = ((R_i + R_j) / vector) ** p
-             
-                for k in fragm_2:
-                
-                    R_k = covalent_radii_lib(element_list[k-1])
-                    vector_2 = np.linalg.norm(geom_num_list[i-1] - geom_num_list[k-1], ord=2) #bohr
-                    omega_2 = ((R_i + R_k) / vector_2) ** p
-                    
-                    if j == k:
-                        X = -1.0 * p * (omega_2 / vector_2) * (1.0 / B)
-                        Y = A * (-1.0 * p) * (omega_2 / vector_2) 
-                        Z = B ** 2
-                        M = (1.0 - p) * (omega / B) + (A / B ** 2) * p * (omega / vector)
-                    else:
-                        X = 0.0
-                        Y = 0.0
-                        Z = 0.0
-                        M = 0.0
-                    L = (1.0 - p) * (X + (p / B ** 2) * omega * (omega_2 / vector_2)) + p * ((1.0 - p) * omega * omega_2 + Y) * (1.0 / ( B ** 2 * vector)) + (-1.0 / ( B ** 4 * vector ** 2)) * A * omega * (2.0 * B * vector * (-1.0 * p * (omega_2 / vector_2))) 
-                
-                    hessian_x1x1 = alpha * (geom_num_list[i-1][0] - geom_num_list[j-1][0] / vector) * (geom_num_list[i-1][0] - geom_num_list[k-1][0] / vector_2) * (L - (M / vector))
-                    hessian_x1y1 = alpha * (geom_num_list[i-1][0] - geom_num_list[j-1][0] / vector) * (geom_num_list[i-1][1] - geom_num_list[k-1][1] / vector_2) * (L - (M / vector))
-                    hessian_x1z1 = alpha * (geom_num_list[i-1][0] - geom_num_list[j-1][0] / vector) * (geom_num_list[i-1][2] - geom_num_list[k-1][2] / vector_2) * (L - (M / vector))
-                    hessian_x1x2 = -1 * hessian_x1x1
-                    hessian_x1y2 = -1 * hessian_x1y1
-                    hessian_x1z2 = -1 * hessian_x1z1
-                    
-                    hessian_y1x1 = hessian_x1y1
-                    hessian_y1y1 = alpha * (geom_num_list[i-1][1] - geom_num_list[j-1][1] / vector) * (geom_num_list[i-1][1] - geom_num_list[k-1][1] / vector_2) * (L - (M / vector))
-                    hessian_y1z1 = alpha * (geom_num_list[i-1][1] - geom_num_list[j-1][1] / vector) * (geom_num_list[i-1][2] - geom_num_list[k-1][2] / vector_2) * (L - (M / vector))
-                    hessian_y1x2 = -1 * hessian_y1x1
-                    hessian_y1y2 = -1 * hessian_y1y1
-                    hessian_y1z2 = -1 * hessian_y1z1
-                    
-                    hessian_z1x1 = hessian_x1z1
-                    hessian_z1y1 = hessian_y1z1
-                    hessian_z1z1 = alpha * (geom_num_list[i-1][2] - geom_num_list[j-1][2] / vector) * (geom_num_list[i-1][2] - geom_num_list[k-1][2] / vector_2) * (L - (M / vector))
-                    hessian_z1x2 = -1 * hessian_z1x1
-                    hessian_z1y2 = -1 * hessian_z1y1
-                    hessian_z1z2 = -1 * hessian_z1z1 
-                    
-                    hessian_x2x1 = hessian_x1x2
-                    hessian_x2y1 = hessian_y1x2
-                    hessian_x2z1 = hessian_z1x2
-                    hessian_x2x2 = -1 * hessian_x2x1
-                    hessian_x2y2 = -1 * hessian_x2y1
-                    hessian_x2z2 = -1 * hessian_x2z1
-
-                    hessian_y2x1 = hessian_x1y2
-                    hessian_y2y1 = hessian_y1y2
-                    hessian_y2z1 = hessian_z1y2
-                    hessian_y2x2 = -1 * hessian_y2x1
-                    hessian_y2y2 = -1 * hessian_y2y1
-                    hessian_y2z2 = -1 * hessian_y2z1
-                    
-                    hessian_z2x1 = hessian_x1z2
-                    hessian_z2y1 = hessian_y1z2
-                    hessian_z2z1 = hessian_z1z2
-                    hessian_z2x2 = -1 * hessian_z2x1
-                    hessian_z2y2 = -1 * hessian_z2y1
-                    hessian_z2z2 = -1 * hessian_z2z1
-
-
-                    tmp_hess[3*(i-1)+0][3*(i-1)+0] += hessian_x1x1
-                    tmp_hess[3*(i-1)+0][3*(i-1)+1] += hessian_x1y1
-                    tmp_hess[3*(i-1)+0][3*(i-1)+2] += hessian_x1z1
-                    tmp_hess[3*(i-1)+0][3*(j-1)+0] += hessian_x1x2
-                    tmp_hess[3*(i-1)+0][3*(j-1)+1] += hessian_x1y2
-                    tmp_hess[3*(i-1)+0][3*(j-1)+2] += hessian_x1z2
-                    
-                    tmp_hess[3*(i-1)+1][3*(i-1)+0] += hessian_y1x1
-                    tmp_hess[3*(i-1)+1][3*(i-1)+1] += hessian_y1y1
-                    tmp_hess[3*(i-1)+1][3*(i-1)+2] += hessian_y1z1
-                    tmp_hess[3*(i-1)+1][3*(j-1)+0] += hessian_y1x2
-                    tmp_hess[3*(i-1)+1][3*(j-1)+1] += hessian_y1y2
-                    tmp_hess[3*(i-1)+1][3*(j-1)+2] += hessian_y1z2
-                    
-                    tmp_hess[3*(i-1)+2][3*(i-1)+0] += hessian_z1x1
-                    tmp_hess[3*(i-1)+2][3*(i-1)+1] += hessian_z1y1
-                    tmp_hess[3*(i-1)+2][3*(i-1)+2] += hessian_z1z1
-                    tmp_hess[3*(i-1)+2][3*(j-1)+0] += hessian_z1x2
-                    tmp_hess[3*(i-1)+2][3*(j-1)+1] += hessian_z1y2
-                    tmp_hess[3*(i-1)+2][3*(j-1)+2] += hessian_z1z2
-                    
-                    tmp_hess[3*(j-1)+0][3*(i-1)+0] += hessian_x2x1
-                    tmp_hess[3*(j-1)+0][3*(i-1)+1] += hessian_x2y1
-                    tmp_hess[3*(j-1)+0][3*(i-1)+2] += hessian_x2z1
-                    tmp_hess[3*(j-1)+0][3*(j-1)+0] += hessian_x2x2
-                    tmp_hess[3*(j-1)+0][3*(j-1)+1] += hessian_x2y2
-                    tmp_hess[3*(j-1)+0][3*(j-1)+2] += hessian_x2z2
-                    
-                    tmp_hess[3*(j-1)+1][3*(i-1)+0] += hessian_y2x1
-                    tmp_hess[3*(j-1)+1][3*(i-1)+1] += hessian_y2y1
-                    tmp_hess[3*(j-1)+1][3*(i-1)+2] += hessian_y2z1
-                    tmp_hess[3*(j-1)+1][3*(j-1)+0] += hessian_y2x2
-                    tmp_hess[3*(j-1)+1][3*(j-1)+1] += hessian_y2y2
-                    tmp_hess[3*(j-1)+1][3*(j-1)+2] += hessian_y2z2
-                    
-                    tmp_hess[3*(j-1)+2][3*(i-1)+0] += hessian_z2x1
-                    tmp_hess[3*(j-1)+2][3*(i-1)+1] += hessian_z2y1
-                    tmp_hess[3*(j-1)+2][3*(i-1)+2] += hessian_z2z1
-                    tmp_hess[3*(j-1)+2][3*(j-1)+0] += hessian_z2x2
-                    tmp_hess[3*(j-1)+2][3*(j-1)+1] += hessian_z2y2
-                    tmp_hess[3*(j-1)+2][3*(j-1)+2] += hessian_z2z2
-                     
-            
-            
-            hessian = hessian + np.array(tmp_hess, dtype="float64")
-            return hessian
-                     
-        def calc_keep_potential(coord1, coord2, spring_const, keep_dist):
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            energy = 0.5 * spring_const * (vector - keep_dist/self.bohr2angstroms) ** 2
-            return energy #hartree
-            
-        def calc_keep_potential_grad(coord1, coord2, spring_const, keep_dist):
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            grad_x_1 = spring_const * ((vector - keep_dist/self.bohr2angstroms) * (coord1[0] - coord2[0])) / (vector)
-            grad_y_1 = spring_const * ((vector - keep_dist/self.bohr2angstroms) * (coord1[1] - coord2[1])) / (vector)
-            grad_z_1 = spring_const * ((vector - keep_dist/self.bohr2angstroms) * (coord1[2] - coord2[2])) / (vector)
-
-            grad_1 = np.array([grad_x_1, grad_y_1, grad_z_1], dtype="float64") #hartree/Bohr
-            grad_2 = np.array([-1.0 * grad_x_1, -1.0 * grad_y_1, -1.0 * grad_z_1], dtype="float64") #hartree/Bohr
-            return grad_1, grad_2 #hartree/Bohr
-            
-
-        def calc_keep_potential_hess(coord1, coord2, spring_const, keep_dist, coord1_num, coord2_num, hessian):
-            
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            tmp_hess = (hessian*0.0)
-            hessian_x1x1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_x1y1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[1] - coord2[1])
-            hessian_x1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[2] - coord2[2])
-            hessian_x1x2 = -1 * hessian_x1x1
-            hessian_x1y2 = -1 * hessian_x1y1
-            hessian_x1z2 = -1 * hessian_x1z1
-            
-            hessian_y1x1 = hessian_x1y1
-            hessian_y1y1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_y1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) * (coord1[2] - coord2[2])
-            hessian_y1x2 = -1 * hessian_y1x1
-            hessian_y1y2 = -1 * hessian_y1y1
-            hessian_y1z2 = -1 * hessian_y1z1
-            
-            hessian_z1x1 = hessian_x1z1
-            hessian_z1y1 = hessian_y1z1
-            hessian_z1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[2] - coord2[2]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_z1x2 = -1 * hessian_z1x1
-            hessian_z1y2 = -1 * hessian_z1y1
-            hessian_z1z2 = -1 * hessian_z1z1 
-            
-            hessian_x2x1 = hessian_x1x2
-            hessian_x2y1 = hessian_y1x2
-            hessian_x2z1 = hessian_z1x2
-            hessian_x2x2 = -1 * hessian_x2x1
-            hessian_x2y2 = -1 * hessian_x2y1
-            hessian_x2z2 = -1 * hessian_x2z1
-
-            hessian_y2x1 = hessian_x1y2
-            hessian_y2y1 = hessian_y1y2
-            hessian_y2z1 = hessian_z1y2
-            hessian_y2x2 = -1 * hessian_y2x1
-            hessian_y2y2 = -1 * hessian_y2y1
-            hessian_y2z2 = -1 * hessian_y2z1
-            
-            hessian_z2x1 = hessian_x1z2
-            hessian_z2y1 = hessian_y1z2
-            hessian_z2z1 = hessian_z1z2
-            hessian_z2x2 = -1 * hessian_z2x1
-            hessian_z2y2 = -1 * hessian_z2y1
-            hessian_z2z2 = -1 * hessian_z2z1
-
-            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x1x1)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x1y1)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x1z1)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x1x2)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x1y2)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x1z2)
-            
-            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y1x1)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y1y1)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y1z1)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y1x2)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y1y2)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y1z2)
-            
-            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z1x1)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z1y1)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z1z1)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z1x2)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z1y2)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z1z2)
-            
-            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x2x1)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x2y1)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x2z1)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x2x2)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x2y2)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x2z2)
-            
-            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y2x1)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y2y1)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y2z1)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y2x2)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y2y2)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y2z2)
-            
-            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z2x1)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z2y1)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z2z1)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z2x2)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z2y2)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z2z2)
-            
-            hessian = hessian + tmp_hess
-            
-            return hessian
-
-          
-        def calc_anharmonic_keep_potential(coord1, coord2, spring_const, keep_dist, pot_depth):
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            if pot_depth != 0.0:
-                energy = pot_depth * ( 1.0 - np.exp( - np.sqrt(spring_const / (2 * pot_depth)) * (vector - keep_dist/self.bohr2angstroms)) ) ** 2
-            else:
-                energy = 0.0
-            return energy #hartree
-            
-        
-        def calc_anharmonic_keep_potential_grad(coord1, coord2, spring_const, keep_dist, pot_depth):
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            if pot_depth != 0.0:
-                a = np.sqrt(spring_const / (2 * pot_depth))
-                grad_x = 2 * a * pot_depth * ( 1.0 - np.exp( - a * (vector - keep_dist/self.bohr2angstroms)) ) * np.exp( - a * (vector - keep_dist/self.bohr2angstroms)) * ( (coord1[0] - coord2[0]) / vector )
-                grad_y = 2 * a * pot_depth * ( 1.0 - np.exp( - a * (vector - keep_dist/self.bohr2angstroms)) ) * np.exp( - a * (vector - keep_dist/self.bohr2angstroms)) * ( (coord1[1] - coord2[1]) / vector )
-                grad_z = 2 * a * pot_depth * ( 1.0 - np.exp( - a * (vector - keep_dist/self.bohr2angstroms)) ) * np.exp( - a * (vector - keep_dist/self.bohr2angstroms)) * ( (coord1[2] - coord2[2]) / vector )
-                
-                
-                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1 * grad_x, -1 * grad_y, -1 * grad_z], dtype="float64")
-            else:
-                grad_1, grad_2 = np.array([0.0,0.0,0.0], dtype="float64"), np.array([0.0,0.0,0.0], dtype="float64")
-                
-            return grad_1, grad_2 #hartree/Bohr
-            
-        def calc_anharmonic_keep_potential_hess(coord1, coord2, spring_const, keep_dist, pot_depth, coord1_num, coord2_num, hessian):
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            if pot_depth != 0.0:
-                tmp_hess = hessian*0.0
-                a = np.sqrt(spring_const / (2 * pot_depth))
-                
-                hessian_x1x1 = 2.0 * pot_depth * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) * (((a * (coord1[0] - coord2[0]))/ vector ) ** 2 * (2 * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) - 1.0) + (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) * a * ((1.0 / vector) - ((coord1[0] - coord2[0]) ** 2/vector ** 3)))
-                hessian_x1y1 = 2.0 * pot_depth * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) * (coord1[0] - coord2[0]) * (coord1[1] - coord2[1]) * (a / vector) * ((a / vector) * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) - (a / vector) * (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) - (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) * (1.0 / vector ** 2))
-                hessian_x1z1 = 2.0 * pot_depth * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) * (coord1[0] - coord2[0]) * (coord1[2] - coord2[2]) * (a / vector) * ((a / vector) * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) - (a / vector) * (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) - (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) * (1.0 / vector ** 2))
-                hessian_x1x2 = -1 * hessian_x1x1
-                hessian_x1y2 = -1 * hessian_x1y1
-                hessian_x1z2 = -1 * hessian_x1z1
-                
-                hessian_y1x1 = hessian_x1y1
-                hessian_y1y1 = 2.0 * pot_depth * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) * (((a * (coord1[1] - coord2[1]))/ vector ) ** 2 * (2 * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) - 1.0) + (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) * a * ((1.0 / vector) - ((coord1[1] - coord2[1]) ** 2/vector ** 3)))
-                hessian_y1z1 = 2.0 * pot_depth * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) * (coord1[2] - coord2[2]) * (coord1[1] - coord2[1]) * (a / vector) * ((a / vector) * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) - (a / vector) * (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) - (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) * (1.0 / vector ** 2))
-                hessian_y1x2 = -1 * hessian_y1x1
-                hessian_y1y2 = -1 * hessian_y1y1
-                hessian_y1z2 = -1 * hessian_y1z1
-                
-                hessian_z1x1 = hessian_x1z1
-                hessian_z1y1 = hessian_y1z1
-                hessian_z1z1 = 2.0 * pot_depth * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) * (((a * (coord1[2] - coord2[2]))/ vector ) ** 2 * (2 * np.exp(- a * (vector - keep_dist/self.bohr2angstroms)) - 1.0) + (1.0 - np.exp(- a * (vector - keep_dist/self.bohr2angstroms))) * a * ((1.0 / vector) - ((coord1[2] - coord2[2]) ** 2/vector ** 3)))
-                hessian_z1x2 = -1 * hessian_z1x1
-                hessian_z1y2 = -1 * hessian_z1y1
-                hessian_z1z2 = -1 * hessian_z1z1 
-                
-                hessian_x2x1 = hessian_x1x2
-                hessian_x2y1 = hessian_y1x2
-                hessian_x2z1 = hessian_z1x2
-                hessian_x2x2 = -1 * hessian_x2x1
-                hessian_x2y2 = -1 * hessian_x2y1
-                hessian_x2z2 = -1 * hessian_x2z1
-
-                hessian_y2x1 = hessian_x1y2
-                hessian_y2y1 = hessian_y1y2
-                hessian_y2z1 = hessian_z1y2
-                hessian_y2x2 = -1 * hessian_y2x1
-                hessian_y2y2 = -1 * hessian_y2y1
-                hessian_y2z2 = -1 * hessian_y2z1
-                
-                hessian_z2x1 = hessian_x1z2
-                hessian_z2y1 = hessian_y1z2
-                hessian_z2z1 = hessian_z1z2
-                hessian_z2x2 = -1 * hessian_z2x1
-                hessian_z2y2 = -1 * hessian_z2y1
-                hessian_z2z2 = -1 * hessian_z2z1
-
-                tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x1x1)
-                tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x1y1)
-                tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x1z1)
-                tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x1x2)
-                tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x1y2)
-                tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x1z2)
-                
-                tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y1x1)
-                tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y1y1)
-                tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y1z1)
-                tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y1x2)
-                tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y1y2)
-                tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y1z2)
-                
-                tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z1x1)
-                tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z1y1)
-                tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z1z1)
-                tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z1x2)
-                tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z1y2)
-                tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z1z2)
-                
-                tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x2x1)
-                tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x2y1)
-                tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x2z1)
-                tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x2x2)
-                tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x2y2)
-                tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x2z2)
-                
-                tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y2x1)
-                tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y2y1)
-                tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y2z1)
-                tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y2x2)
-                tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y2y2)
-                tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y2z2)
-                
-                tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z2x1)
-                tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z2y1)
-                tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z2z1)
-                tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z2x2)
-                tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z2y2)
-                tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z2z2)
-                
-                hessian = hessian + tmp_hess
-                
-            else:
-                pass
-                
-            return hessian
-        
-        def calc_keep_angle(coord1, coord2, coord3, spring_const, keep_angle):
-            vector1 = coord1 - coord2
-            vector2 = coord3 - coord2
-            magnitude1 = np.linalg.norm(vector1)
-            magnitude2 = np.linalg.norm(vector2)
-            dot_product = np.dot(vector1, vector2)
-            cos_theta = dot_product / (magnitude1 * magnitude2)
-            theta = np.arccos(cos_theta)
-            energy = 0.5 * spring_const * (theta - np.radians(keep_angle)) ** 2
-            return energy #hartree
-        
-        def calc_keep_angle_grad(coord1, coord2, coord3, spring_const, keep_angle):
-            
-            vector1 = coord1 - coord2
-            vector2 = coord3 - coord2
-            dot_product = np.dot(vector1, vector2)
-
-            diff_for_x = vector1[1]*vector2[1] + vector1[2]*vector2[2]
-            diff_for_y = vector1[0]*vector2[0] + vector1[2]*vector2[2]
-            diff_for_z = vector1[1]*vector2[1] + vector1[0]*vector2[0]
-            
-            magnitude1 = np.linalg.norm(vector1)
-            magnitude2 = np.linalg.norm(vector2)
-            cos_theta = dot_product / (magnitude1 * magnitude2)
-            theta = np.arccos(cos_theta)
-            dV_dtheta = spring_const * (theta - np.radians(keep_angle))
-            A = np.sqrt(abs(1 - ( np.linalg.norm( vector1 * vector2, ord=2 ) ** 2 / ((magnitude1 ** 2 ) * (magnitude2 ** 2 )) )))
-            
-            D = magnitude2 * magnitude1 ** 3 * A + 1e-09 #Denominator should not be zero.
-            E = magnitude1 * magnitude2 ** 3 * A + 1e-09 #Denominator should not be zero.
-            
-            grad_1_x = dV_dtheta * (vector1[0] * diff_for_x - vector2[0] * (vector1[1] ** 2 + vector1[2] ** 2)) / D
-            grad_1_y = dV_dtheta * (vector1[1] * diff_for_y - vector2[1] * (vector1[2] ** 2 + vector1[0] ** 2)) / D
-            grad_1_z = dV_dtheta * (vector1[2] * diff_for_z - vector2[2] * (vector1[1] ** 2 + vector1[0] ** 2)) / D
-            grad_3_x = dV_dtheta * (vector2[0] * diff_for_x - vector1[0] * (vector2[1] ** 2 + vector2[2] ** 2)) / E
-            grad_3_y = dV_dtheta * (vector2[1] * diff_for_y - vector1[1] * (vector2[0] ** 2 + vector2[2] ** 2)) / E
-            grad_3_z = dV_dtheta * (vector2[2] * diff_for_z - vector1[2] * (vector2[1] ** 2 + vector2[0] ** 2)) / E
-
-            
-            grad_1 = np.array([grad_1_x, grad_1_y, grad_1_z] ,dtype="float64")
-            grad_3 = np.array([grad_3_x, grad_3_y, grad_3_z] ,dtype="float64")
-            grad_2 = - grad_1 - grad_3
-
-            return grad_1, grad_2, grad_3 #hartree/Bohr
-
-
-        def calc_keep_angle_hess(coord1, coord2, coord3, spring_const, keep_angle, coord1_num, coord2_num, coord3_num, hessian):#not implemented
-            
-            vector = np.linalg.norm((coord1 - coord2), ord=2)
-            
-            tmp_hess = (hessian*0.0)
-            
-            hessian_x1x1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_x1y1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[1] - coord2[1])
-            hessian_x1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[2] - coord2[2])
-            hessian_x1x2 = -1 * hessian_x1x1
-            hessian_x1y2 = -1 * hessian_x1y1
-            hessian_x1z2 = -1 * hessian_x1z1
-            
-            hessian_y1x1 = hessian_x1y1
-            hessian_y1y1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_y1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) * (coord1[2] - coord2[2])
-            hessian_y1x2 = -1 * hessian_y1x1
-            hessian_y1y2 = -1 * hessian_y1y1
-            hessian_y1z2 = -1 * hessian_y1z1
-            
-            hessian_z1x1 = hessian_x1z1
-            hessian_z1y1 = hessian_y1z1
-            hessian_z1z1 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[2] - coord2[2]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_z1x2 = -1 * hessian_z1x1
-            hessian_z1y2 = -1 * hessian_z1y1
-            hessian_z1z2 = -1 * hessian_z1z1 
-            
-            hessian_x2x1 = hessian_x1x2
-            hessian_x2y1 = hessian_y1x2
-            hessian_x2z1 = hessian_z1x2
-            hessian_x2x2 = -1 * hessian_x2x1
-            hessian_x2y2 = -1 * hessian_x2y1
-            hessian_x2z2 = -1 * hessian_x2z1
-
-            hessian_y2x1 = hessian_x1y2
-            hessian_y2y1 = hessian_y1y2
-            hessian_y2z1 = hessian_z1y2
-            hessian_y2x2 = -1 * hessian_y2x1
-            hessian_y2y2 = -1 * hessian_y2y1
-            hessian_y2z2 = -1 * hessian_y2z1
-            
-            hessian_z2x1 = hessian_x1z2
-            hessian_z2y1 = hessian_y1z2
-            hessian_z2z1 = hessian_z1z2
-            hessian_z2x2 = -1 * hessian_z2x1
-            hessian_z2y2 = -1 * hessian_z2y1
-            hessian_z2z2 = -1 * hessian_z2z1
-
-            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x1x1)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x1y1)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x1z1)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x1x2)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x1y2)
-            tmp_hess[3*(coord1_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x1z2)
-            
-            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y1x1)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y1y1)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y1z1)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y1x2)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y1y2)
-            tmp_hess[3*(coord1_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y1z2)
-            
-            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z1x1)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z1y1)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z1z1)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z1x2)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z1y2)
-            tmp_hess[3*(coord1_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z1z2)
-            
-            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+0] = copy.copy(hessian_x2x1)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+1] = copy.copy(hessian_x2y1)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord1_num-1)+2] = copy.copy(hessian_x2z1)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x2x2)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x2y2)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x2z2)
-            
-            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+0] = copy.copy(hessian_y2x1)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+1] = copy.copy(hessian_y2y1)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord1_num-1)+2] = copy.copy(hessian_y2z1)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y2x2)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y2y2)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y2z2)
-            
-            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+0] = copy.copy(hessian_z2x1)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+1] = copy.copy(hessian_z2y1)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord1_num-1)+2] = copy.copy(hessian_z2z1)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z2x2)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z2y2)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z2z2)
-            
-            
-            
-            hessian_x3x3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_x3y3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[1] - coord2[1])
-            hessian_x3z3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[0] - coord2[0]) * (coord1[2] - coord2[2])
-            hessian_x3x2 = -1 * hessian_x3x3
-            hessian_x3y2 = -1 * hessian_x3y3
-            hessian_x3z2 = -1 * hessian_x3z3
-            
-            hessian_y3x3 = hessian_x3y3
-            hessian_y3y3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_y3z3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[1] - coord2[1]) * (coord1[2] - coord2[2])
-            hessian_y3x2 = -1 * hessian_y3x3
-            hessian_y3y2 = -1 * hessian_y3y3
-            hessian_y3z2 = -1 * hessian_y3z3
-            
-            hessian_z3x3 = hessian_x3z3
-            hessian_z3y3 = hessian_y3z3
-            hessian_z3z3 = (spring_const * (keep_dist/self.bohr2angstroms) / vector ** 3 ) * (coord1[2] - coord2[2]) ** 2 + spring_const * ((vector - (keep_dist/self.bohr2angstroms)) / vector)
-            hessian_z3x2 = -1 * hessian_z1x1
-            hessian_z3y2 = -1 * hessian_z1y1
-            hessian_z3z2 = -1 * hessian_z1z1 
-            
-            hessian_x2x3 = hessian_x3x2
-            hessian_x2y3 = hessian_y3x2
-            hessian_x2z3 = hessian_z3x2
-            hessian_x2x2 = -1 * hessian_x2x3
-            hessian_x2y2 = -1 * hessian_x2y3
-            hessian_x2z2 = -1 * hessian_x2z3
-
-            hessian_y2x3 = hessian_x3y2
-            hessian_y2y3 = hessian_y3y2
-            hessian_y2z3 = hessian_z3y2
-            hessian_y2x2 = -1 * hessian_y2x3
-            hessian_y2y2 = -1 * hessian_y2y3
-            hessian_y2z2 = -1 * hessian_y2z3
-            
-            hessian_z2x3 = hessian_x3z2
-            hessian_z2y3 = hessian_y3z2
-            hessian_z2z3 = hessian_z3z2
-            hessian_z2x2 = -1 * hessian_z2x3
-            hessian_z2y2 = -1 * hessian_z2y3
-            hessian_z2z2 = -1 * hessian_z2z3
-
-            tmp_hess[3*(coord3_num-1)+0][3*(coord3_num-1)+0] = copy.copy(hessian_x3x3)
-            tmp_hess[3*(coord3_num-1)+0][3*(coord3_num-1)+1] = copy.copy(hessian_x3y3)
-            tmp_hess[3*(coord3_num-1)+0][3*(coord3_num-1)+2] = copy.copy(hessian_x3z3)
-            tmp_hess[3*(coord3_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x3x2)
-            tmp_hess[3*(coord3_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x3y2)
-            tmp_hess[3*(coord3_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x3z2)
-            
-            tmp_hess[3*(coord3_num-1)+1][3*(coord3_num-1)+0] = copy.copy(hessian_y3x3)
-            tmp_hess[3*(coord3_num-1)+1][3*(coord3_num-1)+1] = copy.copy(hessian_y3y3)
-            tmp_hess[3*(coord3_num-1)+1][3*(coord3_num-1)+2] = copy.copy(hessian_y3z3)
-            tmp_hess[3*(coord3_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y3x2)
-            tmp_hess[3*(coord3_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y3y2)
-            tmp_hess[3*(coord3_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y3z2)
-            
-            tmp_hess[3*(coord3_num-1)+2][3*(coord3_num-1)+0] = copy.copy(hessian_z3x3)
-            tmp_hess[3*(coord3_num-1)+2][3*(coord3_num-1)+1] = copy.copy(hessian_z3y3)
-            tmp_hess[3*(coord3_num-1)+2][3*(coord3_num-1)+2] = copy.copy(hessian_z3z3)
-            tmp_hess[3*(coord3_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z3x2)
-            tmp_hess[3*(coord3_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z3y2)
-            tmp_hess[3*(coord3_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z3z2)
-            
-            tmp_hess[3*(coord2_num-1)+0][3*(coord3_num-1)+0] = copy.copy(hessian_x2x3)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord3_num-1)+1] = copy.copy(hessian_x2y3)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord3_num-1)+2] = copy.copy(hessian_x2z3)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+0] = copy.copy(hessian_x2x2)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+1] = copy.copy(hessian_x2y2)
-            tmp_hess[3*(coord2_num-1)+0][3*(coord2_num-1)+2] = copy.copy(hessian_x2z2)
-            
-            tmp_hess[3*(coord2_num-1)+1][3*(coord3_num-1)+0] = copy.copy(hessian_y2x3)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord3_num-1)+1] = copy.copy(hessian_y2y3)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord3_num-1)+2] = copy.copy(hessian_y2z3)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+0] = copy.copy(hessian_y2x2)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+1] = copy.copy(hessian_y2y2)
-            tmp_hess[3*(coord2_num-1)+1][3*(coord2_num-1)+2] = copy.copy(hessian_y2z2)
-            
-            tmp_hess[3*(coord2_num-1)+2][3*(coord3_num-1)+0] = copy.copy(hessian_z2x3)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord3_num-1)+1] = copy.copy(hessian_z2y3)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord3_num-1)+2] = copy.copy(hessian_z2z3)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+0] = copy.copy(hessian_z2x2)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+1] = copy.copy(hessian_z2y2)
-            tmp_hess[3*(coord2_num-1)+2][3*(coord2_num-1)+2] = copy.copy(hessian_z2z2)
-            
-            
-            hessian = hessian + tmp_hess
-            
-            return hessian
-           
-        
-        def calc_keep_dihedral_angle(coord1, coord2, coord3, coord4, spring_const, keep_dihedral_angle):
-
-            a1 = coord2 - coord1
-            a2 = coord3 - coord2
-            a3 = coord4 - coord3
-
-            v1 = np.cross(a1, a2)
-            v1 = v1 / np.linalg.norm(v1, ord=2)
-            v2 = np.cross(a2, a3)
-            v2 = v2 / np.linalg.norm(v2, ord=2)
-            angle = np.arccos((v1*v2).sum(-1) / ((v1**2).sum(-1) * (v2**2).sum(-1))**0.5)
-
-            energy = 0.5 * spring_const * (angle - np.radians(keep_dihedral_angle)) ** 2
-            
-            return energy #hartree    
-        
-        
-        def calc_keep_dihedral_angle_grad(coord1, coord2, coord3, coord4, spring_const, keep_dihedral_angle):
-            eps = 1e-8
-            a1 = coord2 - coord1
-            a2 = coord3 - coord2
-            a3 = coord4 - coord3
-
-            v1 = np.cross(a1, a2)
-            v1_norm = np.linalg.norm(v1) + eps
-            v2 = np.cross(a2, a3)
-            v2_norm = np.linalg.norm(v2) + eps
-
-            v1_base = v1 / v1_norm
-            v2_base = v2 / v2_norm
-            
-
-            A = a1[1] * a2[2] - a1[2] * a2[1] + eps
-            B = a1[2] * a2[0] - a1[0] * a2[2] + eps
-            C = a1[0] * a2[1] - a1[1] * a2[0] + eps
-
-            D = a2[1] * a3[2] - a2[2] * a3[1] + eps
-            E = a2[2] * a3[0] - a2[0] * a3[2] + eps
-            F = a2[0] * a3[1] - a2[1] * a3[0] + eps
-
-
-            Z = np.sum(v1_base * v2_base)
-            Y_1 = np.sum(v1_base * v1_base) 
-            Y_2 = np.sum(v2_base * v2_base) 
-            Y = Y_1 + Y_2
-            Y_sqrt = Y ** 0.5
-            X = Z / (Y_sqrt)
-
-            angle = np.arccos(np.sum(v1_base*v2_base) / (np.sum(v1_base**2) * np.sum(v2_base**2))**0.5)
-
-            dE_d_angle = spring_const * (angle - np.radians(np.abs(keep_dihedral_angle)))
-            d_angle_dX = -1 / np.sqrt(np.abs(1 - X ** 2)) 
-            #-----------------------------------------------
-            d_BE_d_a1_x = -E * a2[2]
-            d_v1_norm_v2_norm_d_a1_x = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-B * a2[2] + C * a2[1])
-            d_CF_d_a1_x = F * a2[1]
-            dB_d_a1_x = -a2[2]
-            d_v1_norm_d_a1_x = (-B * a2[2] + C * a2[1]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
-            dC_d_a1_x = a2[1]
-            part_1 = (((d_BE_d_a1_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_x * B * E) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_CF_d_a1_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_x * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (B / v1_norm) * ((dB_d_a1_x * v1_norm - B * d_v1_norm_d_a1_x) / v1_norm ** 2)
-            part_4 = 2 * (C / v1_norm) * ((dC_d_a1_x * v1_norm - C * d_v1_norm_d_a1_x) / v1_norm ** 2)
- 
-            dX_d_a1_x = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
-
-            d_AD_d_a1_y = D * a2[2]
-            d_v1_norm_v2_norm_d_a1_y = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-C * a2[0] + A * a2[2])
-            d_CF_d_a1_y = -F * a2[1]
-            dA_d_a1_y = a2[2]
-            d_v1_norm_d_a1_y = (-C * a2[0] + A * a2[2]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
-            dC_d_a1_y = -a2[0]
-            part_1 = (((d_AD_d_a1_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_y * A * D) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_CF_d_a1_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_y * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (A / v1_norm) * ((dA_d_a1_y * v1_norm - A * d_v1_norm_d_a1_y) / v1_norm ** 2)
-            part_4 = 2 * (C / v1_norm) * ((dC_d_a1_y * v1_norm - C * d_v1_norm_d_a1_y) / v1_norm ** 2)
- 
-            dX_d_a1_y = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
-
-
-            d_AD_d_a1_z = -D * a2[1]
-            d_v1_norm_v2_norm_d_a1_z = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-A * a2[1] + B * a2[0])
-            d_BE_d_a1_z = E * a2[0]
-            dA_d_a1_z = -a2[1]
-            d_v1_norm_d_a1_z = (B * a2[0] - A * a2[1]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
-            dB_d_a1_z = a2[0]
-            part_1 = (((d_AD_d_a1_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_z * A * D) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_BE_d_a1_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a1_z * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (A / v1_norm) * ((dA_d_a1_z * v1_norm - A * d_v1_norm_d_a1_z) / v1_norm ** 2)
-            part_4 = 2 * (B / v1_norm) * ((dB_d_a1_z * v1_norm - B * d_v1_norm_d_a1_z) / v1_norm ** 2)
- 
-            dX_d_a1_z = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
-            
-            #-------------------------------------
-            d_BE_d_a3_x = B * a2[2]
-            d_v1_norm_v2_norm_d_a3_x = ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (E * a2[2] - F * a2[1])
-            d_CF_d_a3_x = -C * a2[1]
-            dE_d_a3_x = a2[2]
-            d_v2_norm_d_a3_x = (E * a2[2] -F * a2[1]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5 
-            dF_d_a3_x = -a2[1]
-            part_1 = (((d_BE_d_a3_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_x * B * E) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_CF_d_a3_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_x * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (E / v2_norm) * ((dE_d_a3_x * v2_norm - E * d_v2_norm_d_a3_x) / v2_norm ** 2)
-            part_4 = 2 * (F / v2_norm) * ((dF_d_a3_x * v2_norm - F * d_v2_norm_d_a3_x) / v2_norm ** 2)
- 
-            dX_d_a3_x = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
-
-            d_AD_d_a3_y = -A * a2[2]
-            d_v1_norm_v2_norm_d_a3_y = ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-D * a2[2] + F * a2[0])
-            d_CF_d_a3_y = C * a2[0]
-            dD_d_a3_y = -a2[2]
-            d_v2_norm_d_a3_y = (-D * a2[2] + F * a2[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
-            dF_d_a3_y = a2[0]
-            part_1 = (((d_AD_d_a3_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_y * A * D) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_CF_d_a3_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_y * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (D / v2_norm) * ((dD_d_a3_y * v2_norm - D * d_v2_norm_d_a3_y) / v2_norm ** 2)
-            part_4 = 2 * (F / v2_norm) * ((dF_d_a3_y * v2_norm - F * d_v2_norm_d_a3_y) / v2_norm ** 2)
- 
-            dX_d_a3_y = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
-
-
-            d_AD_d_a3_z = A * a2[1]
-            d_v1_norm_v2_norm_d_a3_z = ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-E * a2[0] + D * a2[1])
-            d_BE_d_a3_z = -B * a2[0]
-            dE_d_a3_z = -a2[0]
-            d_v2_norm_d_a3_z = (D * a2[1] - E * a2[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
-            dD_d_a3_z = a2[1]
-            part_1 = (((d_AD_d_a3_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_z * A * D) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_BE_d_a3_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a3_z * B * E) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (E / v2_norm) * ((dE_d_a3_z * v2_norm - E * d_v2_norm_d_a3_z) / v2_norm ** 2)
-            part_4 = 2 * (D / v2_norm) * ((dD_d_a3_z * v2_norm - D * d_v2_norm_d_a3_z) / v2_norm ** 2)
- 
-            dX_d_a3_z = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_3 + part_4)) / Y
-            #-------------------------------------
-            
-            d_BE_d_a2_x = E * a1[2] -B * a3[2]
-            d_v1_norm_v2_norm_d_a2_x = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (B * a1[2] - C * a1[1]) + ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-E * a3[2] + F * a3[1])
-            d_CF_d_a2_x = -F * a1[1] + C * a3[1]
-            dB_d_a2_x = a1[2]
-            d_v1_norm_d_a2_x = (B * a1[2] - C * a1[1]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
-            dC_d_a2_x = -a1[1]
-            dE_d_a2_x = -a3[2]
-            d_v2_norm_d_a2_x = (-E * a3[2] + F * a3[1]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5 
-            dF_d_a2_x = a3[1]
-            part_1 = (((d_BE_d_a2_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_x * B * E) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_CF_d_a2_x) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_x * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (B / v1_norm) * ((dB_d_a2_x * v1_norm - B * d_v1_norm_d_a2_x) / v1_norm ** 2)
-            part_4 = 2 * (C / v1_norm) * ((dC_d_a2_x * v1_norm - C * d_v1_norm_d_a2_x) / v1_norm ** 2)
-            part_5 = 2 * (E / v2_norm) * ((dE_d_a2_x * v2_norm - E * d_v2_norm_d_a2_x) / v2_norm ** 2)
-            part_6 = 2 * (F / v2_norm) * ((dF_d_a2_x * v2_norm - F * d_v2_norm_d_a2_x) / v2_norm ** 2)
-
-            dX_d_a2_x = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_5 + part_6)) / Y
-
-            d_AD_d_a2_y = -D * a1[2] + A * a3[2]
-            d_v1_norm_v2_norm_d_a2_y = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (-A * a1[2] + C * a3[0]) + ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (D * a3[2] - F * a3[0])
-            d_CF_d_a2_y = -C * a3[0] + F * a1[0]
-            dA_d_a2_y = -a1[2]
-            d_v1_norm_d_a2_y = (-A * a1[2] + C * a2[0]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
-            dC_d_a2_y = a1[0]
-            dD_d_a2_y = a3[2]
-            d_v2_norm_d_a2_y = (D * a3[2] - F * a3[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
-            dF_d_a2_y = -a3[0]
-            part_1 = (((d_AD_d_a2_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_y * A * D) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_CF_d_a2_y) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_y * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (A / v1_norm) * ((dA_d_a2_y * v1_norm - A * d_v1_norm_d_a2_y) / v1_norm ** 2)
-            part_4 = 2 * (C / v1_norm) * ((dC_d_a2_y * v1_norm - C * d_v1_norm_d_a2_y) / v1_norm ** 2)
-            part_5 = 2 * (D / v2_norm) * ((dD_d_a2_y * v2_norm - D * d_v2_norm_d_a2_y) / v2_norm ** 2)
-            part_6 = 2 * (F / v2_norm) * ((dF_d_a2_y * v2_norm - F * d_v2_norm_d_a2_y) / v2_norm ** 2)
-
-            dX_d_a2_y = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_5 + part_6)) / Y
-
-
-            d_AD_d_a2_z = D * a1[1] -A * a3[1]
-            d_v1_norm_v2_norm_d_a2_z = ((D ** 2 + E ** 2 + F ** 2)/(A ** 2 + B ** 2 + C ** 2)) ** 0.5 * (A * a1[1] - B * a1[0]) + ((A ** 2 + B ** 2 + C ** 2)/(D ** 2 + E ** 2 + F ** 2)) ** 0.5 * (-D * a3[1] + E * a3[0])
-            d_BE_d_a2_z = -E * a1[0] + B * a3[0]
-            dA_d_a2_z = a1[1]
-            d_v1_norm_d_a2_z = (A * a1[1] - B * a1[0]) / (A ** 2 + B ** 2 + C ** 2) ** 0.5 
-            dB_d_a2_z = -a1[0]
-            dE_d_a2_z = a3[0]
-            d_v2_norm_d_a2_z = (-D * a3[1] + E * a3[0]) / (D ** 2 + E ** 2 + F ** 2) ** 0.5
-            dD_d_a2_z = -a3[1]
-            part_1 = (((d_AD_d_a2_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_z * A * D) / (v1_norm * v2_norm) ** 2)
-            part_2 = (((d_BE_d_a2_z) * (v1_norm * v2_norm) -d_v1_norm_v2_norm_d_a2_z * C * F) / (v1_norm * v2_norm) ** 2)
-            part_3 = 2 * (A / v1_norm) * ((dA_d_a2_z * v1_norm - A * d_v1_norm_d_a2_z) / v1_norm ** 2)
-            part_4 = 2 * (B / v1_norm) * ((dB_d_a2_z * v1_norm - B * d_v1_norm_d_a2_z) / v1_norm ** 2)
-            part_5 = 2 * (E / v2_norm) * ((dE_d_a2_z * v2_norm - E * d_v2_norm_d_a2_z) / v2_norm ** 2)
-            part_6 = 2 * (D / v2_norm) * ((dD_d_a2_z * v2_norm - D * d_v2_norm_d_a2_z) / v2_norm ** 2)
-
-            dX_d_a2_z = (Y_sqrt * (part_1 + part_2) - 0.5 * Z * Y_2 * (1 / Y_sqrt) * (part_3 + part_4) - 0.5 * Z * Y_1 * (1 / Y_sqrt) * (part_5 + part_6)) / Y
-            #-------------------------------------
-            grad_21 = np.array([dE_d_angle * d_angle_dX * dX_d_a1_x, dE_d_angle * d_angle_dX * dX_d_a1_y, dE_d_angle * d_angle_dX * dX_d_a1_z] ,dtype="float64")
-            grad_32 = np.array([dE_d_angle * d_angle_dX * dX_d_a2_x, dE_d_angle * d_angle_dX * dX_d_a2_y, dE_d_angle * d_angle_dX * dX_d_a2_z] ,dtype="float64")
-            grad_43 = np.array([dE_d_angle * d_angle_dX * dX_d_a3_x, dE_d_angle * d_angle_dX * dX_d_a3_y, dE_d_angle * d_angle_dX * dX_d_a3_z] ,dtype="float64")
-
-            grad_1 = - grad_21
-            grad_2 = (grad_21 - grad_32) 
-            grad_3 = (grad_32 - grad_43) 
-            grad_4 = grad_43
-
-            return grad_1, grad_2, grad_3, grad_4 #hartree/bohr
-
-
-        def calc_keep_dihedral_angle_hess(coord1, coord2, coord3, coord4, spring_const, keep_dihedral_angle, coord1_num, coord2_num, coord3_num, coord4_num, hessian):#not implemented(this function's second derivative is very complicated. thus, implement numerical derivative)
-            numerical_derivative_delta = 0.0001
-            return
-            
-            
-        def calc_void_point_pot(coord, void_point_coord, spring_const, keep_dist, order):
-            vector = np.linalg.norm((coord - void_point_coord), ord=2)
-            energy = (1 / order) * spring_const * (vector - keep_dist/self.bohr2angstroms) ** order
-            return energy #hartree
-        
-        def calc_void_point_pot_grad(coord, void_point_coord, spring_const, keep_dist, order):
-        
-            vector = np.linalg.norm((coord - void_point_coord), ord=2)
-            grad_x = spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[0] - void_point_coord[0])
-            grad_y = spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[1] - void_point_coord[1])
-            grad_z = spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector ) * (coord[2] - void_point_coord[2])
-            grad = np.array([grad_x, grad_y, grad_z], dtype="float64")
-            
-            return grad #hartree/Bohr
-        
-        def calc_void_point_pot_hess(coord, void_point_coord, spring_const, keep_dist, order, coord_num, hessian):
-            vector = np.linalg.norm((coord - void_point_coord), ord=2)
-            tmp_hess = hessian*0.0
-            hessian_xx = spring_const * (coord[0] - void_point_coord[0]) * ((((vector - keep_dist/self.bohr2angstroms) ** (order - 2) * (coord[0] - void_point_coord[0])) / vector ** 2) * ((order - 1) - (vector - keep_dist/self.bohr2angstroms))) + spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector)
-            hessian_xy = spring_const * (coord[0] - void_point_coord[0]) * ((((vector - keep_dist/self.bohr2angstroms) ** (order - 2) * (coord[1] - void_point_coord[1])) / vector ** 2) * ((order - 1) - (vector - keep_dist/self.bohr2angstroms)))
-            hessian_xz = spring_const * (coord[0] - void_point_coord[0]) * ((((vector - keep_dist/self.bohr2angstroms) ** (order - 2) * (coord[2] - void_point_coord[2])) / vector ** 2) * ((order - 1) - (vector - keep_dist/self.bohr2angstroms)))
-            
-            hessian_yx = hessian_xy
-            hessian_yy = spring_const * (coord[1] - void_point_coord[1]) * ((((vector - keep_dist/self.bohr2angstroms) ** (order - 2) * (coord[1] - void_point_coord[1])) / vector ** 2) * ((order - 1) - (vector - keep_dist/self.bohr2angstroms))) + spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector)
-            hessian_yz = spring_const * (coord[1] - void_point_coord[1]) * ((((vector - keep_dist/self.bohr2angstroms) ** (order - 2) * (coord[2] - void_point_coord[2])) / vector ** 2) * ((order - 1) - (vector - keep_dist/self.bohr2angstroms)))
-            
-            hessian_zx = hessian_xz
-            hessian_zy = hessian_yz
-            hessian_zz = spring_const * (coord[2] - void_point_coord[2]) * ((((vector - keep_dist/self.bohr2angstroms) ** (order - 2) * (coord[2] - void_point_coord[2])) / vector ** 2) * ((order - 1) - (vector - keep_dist/self.bohr2angstroms))) + spring_const * ((vector - keep_dist/self.bohr2angstroms) ** (order - 1) / vector)
-            
-            tmp_hess[3*coord_num+0][3*coord_num+0] = copy.copy(hessian_xx)
-            tmp_hess[3*coord_num+0][3*coord_num+1] = copy.copy(hessian_xy)
-            tmp_hess[3*coord_num+0][3*coord_num+2] = copy.copy(hessian_xz)
-        
-            tmp_hess[3*coord_num+1][3*coord_num+0] = copy.copy(hessian_yx)
-            tmp_hess[3*coord_num+1][3*coord_num+1] = copy.copy(hessian_yy)
-            tmp_hess[3*coord_num+1][3*coord_num+2] = copy.copy(hessian_yz)
-
-            tmp_hess[3*coord_num+2][3*coord_num+0] = copy.copy(hessian_zx)
-            tmp_hess[3*coord_num+2][3*coord_num+1] = copy.copy(hessian_zy)
-            tmp_hess[3*coord_num+2][3*coord_num+2] = copy.copy(hessian_zz)
-        
-            hessian = hessian + tmp_hess
-            
-            return hessian
-        
-        def calc_gaussian_pot(geom_num_list, gau_pot_energy, geometry_list):#This function is just for fun. Thus, it is no scientific basis.
-            geom_mean_coord = np.mean(geom_num_list, axis=0)
-            for initial_geom_num_list in geometry_list:
-                A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
-                energy = A*np.sum(np.exp(-(geom_num_list - initial_geom_num_list - geom_mean_coord) ** 2))
-            
-            return energy
-        
-        def calc_gaussian_pot_grad(geom_num_list, gau_pot_energy, geometry_list):#This function is just for fun. Thus, it is no scientific basis.
-            A = gau_pot_energy/(self.hartree2kjmol * len(geom_num_list))
-            geom_mean_coord = np.mean(geom_num_list, axis=0)
-            grad = geom_num_list*0.0
-            for initial_geom_num_list in geometry_list:
-                for i in range(len(geom_num_list)):
-                        
-                    grad_x = -2.0 * A * (geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) * np.exp(-(geom_num_list[i][0] - initial_geom_num_list[i][0] - geom_mean_coord[0]) ** 2)
-                    grad_y = -2.0 * A * (geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) * np.exp(-(geom_num_list[i][1] - initial_geom_num_list[i][1] - geom_mean_coord[1]) ** 2)
-                    grad_z = -2.0 * A * (geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) * np.exp(-(geom_num_list[i][2] - initial_geom_num_list[i][2] - geom_mean_coord[2]) ** 2)
-                    
-                    grad[i] += np.array([grad_x, grad_y, grad_z], dtype="float64")
-            
-            return grad
-            
-        
-                
-        def calc_LJ_Repulsive_pot_v2(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list):  
-            energy = 0.0
-            
-            LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1])) 
-            for i in target:
-                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
-                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
-                
-                vector = np.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
-                energy += UFF_VDW_well_depth * ( abs(const_rep) * ( UFF_VDW_distance / vector ) ** order_rep -1 * abs(const_attr) * ( UFF_VDW_distance / vector ) ** order_attr)
-                
-            return energy
-        
-        def calc_LJ_Repulsive_pot_v2_grad(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list):
-            grad = geom_num_list*0.0
-            
-            LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1]))
-            
-            for i in target:
-                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
-                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
-                
-                vector = np.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
-                grad_x_1 = UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) 
-                grad_y_1 = UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][1] - LJ_pot_center[1])) 
-                grad_z_1 = UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][2] - LJ_pot_center[2])) 
-
-                grad[i-1] += np.array([grad_x_1,grad_y_1,grad_z_1], dtype="float64") #hartree/Bohr
-                grad[center[1]-1-1] += np.array([-1.0 * grad_x_1, -1.0 * grad_y_1, -1.0 * grad_z_1], dtype="float64") #hartree/Bohr
-                
-            return grad
-            
-        def calc_LJ_Repulsive_pot_v2_hess(geom_num_list, well_scale , dist_scale, length, const_rep, const_attr, order_rep, order_attr, center, target, element_list, hessian):
-            
-            LJ_pot_center = geom_num_list[center[1]-1] + (length/self.bohr2angstroms) * (geom_num_list[center[1]-1] - geom_num_list[center[0]-1] / np.linalg.norm(geom_num_list[center[1]-1] - geom_num_list[center[0]-1]))
-            tmp_hess = hessian*0.0
-            for i in target:
-                UFF_VDW_well_depth = np.sqrt(well_scale*UFF_VDW_well_depth_lib(element_list[center[1]-1]) + well_scale*UFF_VDW_well_depth_lib(element_list[i-1]))
-                UFF_VDW_distance = np.sqrt(UFF_VDW_distance_lib(element_list[center[1]-1])*dist_scale + UFF_VDW_distance_lib(element_list[i-1])*dist_scale)
-                
-                vector = np.linalg.norm(geom_num_list[i-1] - LJ_pot_center, ord=2) #bohr
-                
-                hessian_x1x1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) * (geom_num_list[i-1][0] - LJ_pot_center[0]) + UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) 
-                hessian_x1y1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) * (geom_num_list[i-1][1] - LJ_pot_center[1])
-                hessian_x1z1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][0] - LJ_pot_center[0])) * (geom_num_list[i-1][2] - LJ_pot_center[2])
-                hessian_x1x2 = -1 * hessian_x1x1
-                hessian_x1y2 = -1 * hessian_x1y1
-                hessian_x1z2 = -1 * hessian_x1z1
-                
-                hessian_y1x1 = hessian_x1y1
-                hessian_y1y1 = UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][1] - LJ_pot_center[1])) * (geom_num_list[i-1][1] - LJ_pot_center[1]) + UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][1] - LJ_pot_center[1])) 
-                hessian_y1z1 = 12 * UFF_VDW_well_depth * ((geom_num_list[i-1][1] - geom_num_list[j-1][1]) * (geom_num_list[i-1][2] - geom_num_list[j-1][2]) * (-8 * (UFF_VDW_distance ** 6 / vector ** 10) + 14 * (UFF_VDW_distance ** 12 / vector ** 16)))
-                hessian_y1x2 = -1 * hessian_y1x1
-                hessian_y1y2 = -1 * hessian_y1y1
-                hessian_y1z2 = -1 * hessian_y1z1
-                
-                hessian_z1x1 = hessian_x1z1
-                hessian_z1y1 = hessian_y1z1
-                hessian_z1z1 = 12 * UFF_VDW_well_depth * (( abs(const_rep) * order_rep * (order_rep + 2) * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 4) ) -1 * abs(const_attr) * (order_attr) * (order_attr + 2) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 4) ) ) * (geom_num_list[i-1][2] - LJ_pot_center[2])) * (geom_num_list[i-1][2] - LJ_pot_center[2]) + UFF_VDW_well_depth * (( -1 * abs(const_rep) * order_rep * ( UFF_VDW_distance ** order_rep / vector ** (order_rep + 2) ) + abs(const_attr) * (order_attr) * ( UFF_VDW_distance ** (order_attr) / vector ** (order_attr + 2) ) ) * (geom_num_list[i-1][2] - LJ_pot_center[2])) 
-                hessian_z1x2 = -1 * hessian_z1x1
-                hessian_z1y2 = -1 * hessian_z1y1
-                hessian_z1z2 = -1 * hessian_z1z1 
-                
-                hessian_x2x1 = hessian_x1x2
-                hessian_x2y1 = hessian_y1x2
-                hessian_x2z1 = hessian_z1x2
-                hessian_x2x2 = -1 * hessian_x2x1
-                hessian_x2y2 = -1 * hessian_x2y1
-                hessian_x2z2 = -1 * hessian_x2z1
-
-                hessian_y2x1 = hessian_x1y2
-                hessian_y2y1 = hessian_y1y2
-                hessian_y2z1 = hessian_z1y2
-                hessian_y2x2 = -1 * hessian_y2x1
-                hessian_y2y2 = -1 * hessian_y2y1
-                hessian_y2z2 = -1 * hessian_y2z1
-                
-                hessian_z2x1 = hessian_x1z2
-                hessian_z2y1 = hessian_y1z2
-                hessian_z2z1 = hessian_z1z2
-                hessian_z2x2 = -1 * hessian_z2x1
-                hessian_z2y2 = -1 * hessian_z2y1
-                hessian_z2z2 = -1 * hessian_z2z1
-
-
-                tmp_hess[3*(i-1)+0][3*(i-1)+0] = copy.copy(hessian_x1x1)
-                tmp_hess[3*(i-1)+0][3*(i-1)+1] = copy.copy(hessian_x1y1)
-                tmp_hess[3*(i-1)+0][3*(i-1)+2] = copy.copy(hessian_x1z1)
-                tmp_hess[3*(i-1)+0][3*(j-1)+0] = copy.copy(hessian_x1x2)
-                tmp_hess[3*(i-1)+0][3*(j-1)+1] = copy.copy(hessian_x1y2)
-                tmp_hess[3*(i-1)+0][3*(j-1)+2] = copy.copy(hessian_x1z2)
-                
-                tmp_hess[3*(i-1)+1][3*(i-1)+0] = copy.copy(hessian_y1x1)
-                tmp_hess[3*(i-1)+1][3*(i-1)+1] = copy.copy(hessian_y1y1)
-                tmp_hess[3*(i-1)+1][3*(i-1)+2] = copy.copy(hessian_y1z1)
-                tmp_hess[3*(i-1)+1][3*(j-1)+0] = copy.copy(hessian_y1x2)
-                tmp_hess[3*(i-1)+1][3*(j-1)+1] = copy.copy(hessian_y1y2)
-                tmp_hess[3*(i-1)+1][3*(j-1)+2] = copy.copy(hessian_y1z2)
-                
-                tmp_hess[3*(i-1)+2][3*(i-1)+0] = copy.copy(hessian_z1x1)
-                tmp_hess[3*(i-1)+2][3*(i-1)+1] = copy.copy(hessian_z1y1)
-                tmp_hess[3*(i-1)+2][3*(i-1)+2] = copy.copy(hessian_z1z1)
-                tmp_hess[3*(i-1)+2][3*(j-1)+0] = copy.copy(hessian_z1x2)
-                tmp_hess[3*(i-1)+2][3*(j-1)+1] = copy.copy(hessian_z1y2)
-                tmp_hess[3*(i-1)+2][3*(j-1)+2] = copy.copy(hessian_z1z2)
-                
-                tmp_hess[3*(j-1)+0][3*(i-1)+0] = copy.copy(hessian_x2x1)
-                tmp_hess[3*(j-1)+0][3*(i-1)+1] = copy.copy(hessian_x2y1)
-                tmp_hess[3*(j-1)+0][3*(i-1)+2] = copy.copy(hessian_x2z1)
-                tmp_hess[3*(j-1)+0][3*(j-1)+0] = copy.copy(hessian_x2x2)
-                tmp_hess[3*(j-1)+0][3*(j-1)+1] = copy.copy(hessian_x2y2)
-                tmp_hess[3*(j-1)+0][3*(j-1)+2] = copy.copy(hessian_x2z2)
-                
-                tmp_hess[3*(j-1)+1][3*(i-1)+0] = copy.copy(hessian_y2x1)
-                tmp_hess[3*(j-1)+1][3*(i-1)+1] = copy.copy(hessian_y2y1)
-                tmp_hess[3*(j-1)+1][3*(i-1)+2] = copy.copy(hessian_y2z1)
-                tmp_hess[3*(j-1)+1][3*(j-1)+0] = copy.copy(hessian_y2x2)
-                tmp_hess[3*(j-1)+1][3*(j-1)+1] = copy.copy(hessian_y2y2)
-                tmp_hess[3*(j-1)+1][3*(j-1)+2] = copy.copy(hessian_y2z2)
-                
-                tmp_hess[3*(j-1)+2][3*(i-1)+0] = copy.copy(hessian_z2x1)
-                tmp_hess[3*(j-1)+2][3*(i-1)+1] = copy.copy(hessian_z2y1)
-                tmp_hess[3*(j-1)+2][3*(i-1)+2] = copy.copy(hessian_z2z1)
-                tmp_hess[3*(j-1)+2][3*(j-1)+0] = copy.copy(hessian_z2x2)
-                tmp_hess[3*(j-1)+2][3*(j-1)+1] = copy.copy(hessian_z2y2)
-                tmp_hess[3*(j-1)+2][3*(j-1)+2] = copy.copy(hessian_z2z2)
-            
-                hessian = hessian + tmp_hess
-            
-            return hessian
-        
-        def calc_well_potential(coord1, coord2, wall_ene, wall_dists):
-            vec_norm = np.linalg.norm(coord1 - coord2) 
-            a = float(wall_dists[0]) / self.bohr2angstroms
-            b = float(wall_dists[1]) / self.bohr2angstroms
-            c = float(wall_dists[2]) / self.bohr2angstroms
-            d = float(wall_dists[3]) / self.bohr2angstroms
-            short_dist_linear_func_slope = 0.5 / (b - a)
-            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
-            long_dist_linear_func_slope = 0.5 / (c - d)
-            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
-
-            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
-            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
-
-            if vec_norm <= a:
-                energy = (wall_ene / self.hartree2kjmol) * (-3.75 * x_short + 2.875)
-                
-            elif a < vec_norm and vec_norm <= b:
-                energy = (wall_ene / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5)
-                 
-            elif b < vec_norm and vec_norm < c:
-                energy = 0.0
-                
-            elif c <= vec_norm and vec_norm < d:
-                energy = (wall_ene / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5)
-                
-            elif d <= vec_norm:
-                energy = (wall_ene / self.hartree2kjmol) * (-3.75 * x_long + 2.875)
-                
-            else:
-                print("well pot error")
-                raise "well pot error"
-            #print(energy)
-            return energy
-        
-        def calc_well_potential_grad(coord1, coord2, wall_ene, wall_dists):
-            vec_norm = np.linalg.norm(coord1 - coord2) 
-            a = float(wall_dists[0]) / self.bohr2angstroms
-            b = float(wall_dists[1]) / self.bohr2angstroms
-            c = float(wall_dists[2]) / self.bohr2angstroms
-            d = float(wall_dists[3]) / self.bohr2angstroms
-            short_dist_linear_func_slope = 0.5 / (b - a)
-            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
-            long_dist_linear_func_slope = 0.5 / (c - d)
-            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
-
-            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
-            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
-
-            if vec_norm <= a:
-                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (-3.75) * (0.5 / (c - d)) #d_ene_per_dx_short * dx_short_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
-                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
-                
-            elif a < vec_norm and vec_norm <= b:
-                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (- 60.0 * x_short ** 2 + 120.0 * x_short ** 3 - 60 * x_short ** 4) * (0.5 / (c - d)) #d_ene_per_dx_short * dx_short_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
-                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
-                
-            elif b < vec_norm and vec_norm < c:
-                d_ene_per_d_vec_norm = 0.0
-                grad_1, grad_2 = np.array([0.0, 0.0, 0.0], dtype="float64"), np.array([0.0, 0.0, 0.0], dtype="float64")
-                
-            elif c <= vec_norm and vec_norm < d:
-                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (- 60.0 * x_long ** 2 + 120.0 * x_long ** 3 - 60 * x_long ** 4) * (0.5 / (b - a)) #d_ene_per_dx_long * dx_long_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
-                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
-                
-            elif d <= vec_norm:
-                d_ene_per_d_vec_norm = (wall_ene / self.hartree2kjmol) * (-3.75) * (0.5 / (b - a)) #d_ene_per_dx_long * dx_long_per_d_vec_norm
-                grad_x = d_ene_per_d_vec_norm * (coord2[0] - coord1[0]) / vec_norm
-                grad_y = d_ene_per_d_vec_norm * (coord2[1] - coord1[1]) / vec_norm
-                grad_z = d_ene_per_d_vec_norm * (coord2[2] - coord1[2]) / vec_norm
-                grad_1, grad_2 = np.array([grad_x, grad_y, grad_z], dtype="float64"), np.array([-1*grad_x, -1*grad_y, -1*grad_z], dtype="float64")
-                
-            else:
-                print("well grad error")
-                raise "well grad error"
-
-            return grad_1, grad_2
-        
-        
-            
+  
         #--------------------------------------------------
-        AFIR_e = e
+        B_e = e
         BPA_grad_list = g*0.0
         BPA_hessian = np.zeros((3*len(g), 3*len(g)))
         #debug_delta_BPA_grad_list = g*0.0
-        
-        
+        geom_num_list = self.ndarray2tensor(geom_num_list)
+        #print("rpv2")   torch.tensor(*** , dtype=torch.float64, requires_grad=True)
         for i in range(len(force_data["repulsive_potential_v2_well_scale"])):
             if force_data["repulsive_potential_v2_well_scale"][i] != 0.0:
-                AFIR_e += calc_LJ_Repulsive_pot_v2(geom_num_list, force_data["repulsive_potential_v2_well_scale"][i], force_data["repulsive_potential_v2_dist_scale"][i], force_data["repulsive_potential_v2_length"][i], force_data["repulsive_potential_v2_const_rep"][i], force_data["repulsive_potential_v2_const_attr"][i], force_data["repulsive_potential_v2_order_rep"][i], force_data["repulsive_potential_v2_order_attr"][i], force_data["repulsive_potential_v2_center"][i], force_data["repulsive_potential_v2_target"][i], element_list)
-                
-                grad = calc_LJ_Repulsive_pot_v2_grad(geom_num_list, force_data["repulsive_potential_v2_well_scale"][i], force_data["repulsive_potential_v2_dist_scale"][i], force_data["repulsive_potential_v2_length"][i], force_data["repulsive_potential_v2_const_rep"][i], force_data["repulsive_potential_v2_const_attr"][i], force_data["repulsive_potential_v2_order_rep"][i], force_data["repulsive_potential_v2_order_attr"][i], force_data["repulsive_potential_v2_center"][i], force_data["repulsive_potential_v2_target"][i], element_list)
-                BPA_grad_list += grad
-                if self.FC_COUNT == -1:
-                    pass
-                elif iter % self.FC_COUNT == 0:
-                    BPA_hessian = calc_LJ_Repulsive_pot_v2_hess(geom_num_list, force_data["repulsive_potential_v2_well_scale"][i], force_data["repulsive_potential_v2_dist_scale"][i], force_data["repulsive_potential_v2_length"][i], force_data["repulsive_potential_v2_const_rep"][i], force_data["repulsive_potential_v2_const_attr"][i], force_data["repulsive_potential_v2_order_rep"][i], force_data["repulsive_potential_v2_order_attr"][i], force_data["repulsive_potential_v2_center"][i], force_data["repulsive_potential_v2_target"][i], element_list, BPA_hessian)
+                if force_data["repulsive_potential_v2_unit"][i] == "scale":
+                    LJRP = LJRepulsivePotential(repulsive_potential_v2_well_scale=force_data["repulsive_potential_v2_well_scale"][i], 
+                                                repulsive_potential_v2_dist_scale=force_data["repulsive_potential_v2_dist_scale"][i], 
+                                                repulsive_potential_v2_length=force_data["repulsive_potential_v2_length"][i],
+                                                repulsive_potential_v2_const_rep=force_data["repulsive_potential_v2_const_rep"][i],
+                                                repulsive_potential_v2_const_attr=force_data["repulsive_potential_v2_const_attr"], 
+                                                repulsive_potential_v2_order_rep=force_data["repulsive_potential_v2_order_rep"], 
+                                                repulsive_potential_v2_order_attr=force_data["repulsive_potential_v2_order_attr"],
+                                                repulsive_potential_v2_center=force_data["repulsive_potential_v2_center"],
+                                                repulsive_potential_v2_target=force_data["repulsive_potential_v2_target"],
+                                                element_list=element_list)
+                    
+                    B_e += LJRP.calc_energy_scale_v2(geom_num_list)
+                    tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_scale_v2)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_scale_v2)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+
+                elif force_data["repulsive_potential_v2_unit"][i] == "value":
+                    LJRP = LJRepulsivePotential(repulsive_potential_v2_well_value=force_data["repulsive_potential_v2_well_scale"][i], 
+                                                repulsive_potential_v2_dist_value=force_data["repulsive_potential_v2_dist_scale"][i], 
+                                                repulsive_potential_v2_length=force_data["repulsive_potential_v2_length"][i],
+                                                repulsive_potential_v2_const_rep=force_data["repulsive_potential_v2_const_rep"][i],
+                                                repulsive_potential_v2_const_attr=force_data["repulsive_potential_v2_const_attr"], 
+                                                repulsive_potential_v2_order_rep=force_data["repulsive_potential_v2_order_rep"], 
+                                                repulsive_potential_v2_order_attr=force_data["repulsive_potential_v2_order_attr"],
+                                                repulsive_potential_v2_center=force_data["repulsive_potential_v2_center"],
+                                                repulsive_potential_v2_target=force_data["repulsive_potential_v2_target"],
+                                                element_list=element_list)
+                    
+                    B_e += LJRP.calc_energy_value_v2(geom_num_list)
+                    
+                    tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_value_v2)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_value_v2)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+                else:
+                    print("error -rpv2")
+                    raise "error -rpv2"
             else:
                 pass
-        
-        
-        #------------------
-        if force_data["gaussian_pot_energy"] != 0.0:
-            AFIR_e += calc_gaussian_pot(geom_num_list, force_data["gaussian_pot_energy"], GeoInfo.geometry_list)
-            BPA_grad_list += calc_gaussian_pot_grad(geom_num_list, force_data["gaussian_pot_energy"], GeoInfo.geometry_list)
-        else:
-            pass
-        
+
+        #print("rp")
         #------------------
         for i in range(len(force_data["repulsive_potential_dist_scale"])):
             if force_data["repulsive_potential_well_scale"][i] != 0.0:
-                AFIR_e += calc_LJ_Repulsive_pot(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
-                
-                grad = calc_LJ_Repulsive_pot_grad(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list)
-                BPA_grad_list += grad
-                if self.FC_COUNT == -1:
-                    pass
-                elif iter % self.FC_COUNT == 0:
-                    BPA_hessian = calc_LJ_Repulsive_pot_hess(geom_num_list, force_data["repulsive_potential_well_scale"][i], force_data["repulsive_potential_dist_scale"][i],  force_data["repulsive_potential_Fragm_1"][i], force_data["repulsive_potential_Fragm_2"][i], element_list, BPA_hessian)
+                if force_data["repulsive_potential_unit"][i] == "scale":
+                    LJRP = LJRepulsivePotential(repulsive_potential_well_scale=force_data["repulsive_potential_well_scale"][i], 
+                                                repulsive_potential_dist_scale=force_data["repulsive_potential_dist_scale"][i], 
+                                                repulsive_potential_Fragm_1=force_data["repulsive_potential_Fragm_1"][i],
+                                                repulsive_potential_Fragm_2=force_data["repulsive_potential_Fragm_2"][i],
+                                                element_list=element_list)
+                    
+                    B_e += LJRP.calc_energy_scale(geom_num_list)
+                    tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_scale)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_scale)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    
+                    
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+
+                elif force_data["repulsive_potential_unit"][i] == "value":
+                    LJRP = LJRepulsivePotential(repulsive_potential_well_value=force_data["repulsive_potential_well_scale"][i], 
+                                                repulsive_potential_dist_value=force_data["repulsive_potential_dist_scale"][i], 
+                                                repulsive_potential_Fragm_1=force_data["repulsive_potential_Fragm_1"][i],
+                                                repulsive_potential_Fragm_2=force_data["repulsive_potential_Fragm_2"][i],
+                                                element_list=element_list)
+                    
+                    B_e += LJRP.calc_energy_value(geom_num_list)
+                    
+                    tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_value)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_value)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+                else:
+                    print("error -rpv2")
+                    raise "error -rpv2"
             else:
                 pass
         #------------------
         for i in range(len(force_data["keep_pot_spring_const"])):
             if force_data["keep_pot_spring_const"][i] != 0.0:
-                AFIR_e += calc_keep_potential(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
+                SKP = StructKeepPotential(keep_pot_spring_const=force_data["keep_pot_spring_const"][i], 
+                                            keep_pot_distance=force_data["keep_pot_distance"][i], 
+                                            keep_pot_atom_pairs=force_data["keep_pot_atom_pairs"][i])
                 
-                grad_1, grad_2 = calc_keep_potential_grad(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i])
+                B_e += SKP.calc_energy(geom_num_list)
                 
-                BPA_grad_list[force_data["keep_pot_atom_pairs"][i][0]-1] += np.array(grad_1, dtype="float64")
-                BPA_grad_list[force_data["keep_pot_atom_pairs"][i][1]-1] += np.array(grad_2, dtype="float64")
-                if self.FC_COUNT == -1:
-                    pass
-                elif iter % self.FC_COUNT == 0:
-                    BPA_hessian = calc_keep_potential_hess(geom_num_list[force_data["keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_pot_atom_pairs"][i][1]-1], force_data["keep_pot_spring_const"][i], force_data["keep_pot_distance"][i], force_data["keep_pot_atom_pairs"][i][0], force_data["keep_pot_atom_pairs"][i][1], BPA_hessian)
+                tensor_BPA_grad = torch.func.jacfwd(SKP.calc_energy)(geom_num_list)
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                tensor_BPA_hessian = torch.func.hessian(SKP.calc_energy)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
             else:
                 pass
+        #print("akp")
         #------------------        
         for i in range(len(force_data["anharmonic_keep_pot_spring_const"])):
-            if force_data["anharmonic_keep_pot_potential_well_depth"][i] != 0.0:
-                AFIR_e += calc_anharmonic_keep_potential(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
+            if force_data["anharmonic_keep_pot_spring_const"][i] != 0.0:
+                SAKP = StructAnharmonicKeepPotential(anharmonic_keep_pot_spring_const=force_data["anharmonic_keep_pot_spring_const"][i], 
+                                            anharmonic_keep_pot_potential_well_depth=force_data["anharmonic_keep_pot_potential_well_depth"][i], 
+                                            anharmonic_keep_pot_atom_pairs=force_data["anharmonic_keep_pot_atom_pairs"][i],
+                                            anharmonic_keep_pot_distance=force_data["anharmonic_keep_pot_distance"][i])
                 
+                B_e += SAKP.calc_energy(geom_num_list)
                 
-                grad_1, grad_2 = calc_anharmonic_keep_potential_grad(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i])
+                tensor_BPA_grad = torch.func.jacfwd(SAKP.calc_energy)(geom_num_list)
+            
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
                 
-                BPA_grad_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1] += grad_1
-                BPA_grad_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1] += grad_2
+                tensor_BPA_hessian = torch.func.hessian(SAKP.calc_energy)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+               
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
                 
-                if self.FC_COUNT != -1:
-                    pass
-                elif iter % self.FC_COUNT == 0:
-                    BPA_hessian = calc_anharmonic_keep_potential_hess(geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][0]-1], geom_num_list[force_data["anharmonic_keep_pot_atom_pairs"][i][1]-1], force_data["anharmonic_keep_pot_spring_const"][i], force_data["anharmonic_keep_pot_distance"][i], force_data["anharmonic_keep_pot_potential_well_depth"][i], force_data["anharmonic_keep_pot_atom_pairs"][i][0], force_data["anharmonic_keep_pot_atom_pairs"][i][1], BPA_hessian)
             else:
                 pass
+     
         #------------------
         
 
-    
+        #print("wp")
         for i in range(len(force_data["well_pot_wall_energy"])):
             if force_data["well_pot_wall_energy"][i] != 0.0:
-                AFIR_e += calc_well_potential(geom_num_list[force_data["well_pot_atom_pair"][i][0]-1], geom_num_list[force_data["well_pot_atom_pair"][i][1]-1], force_data["well_pot_wall_energy"][i], force_data["well_pot_limit_dist"][i])
+                WP = WellPotential(well_pot_wall_energy=force_data["well_pot_wall_energy"][i], 
+                                            well_pot_atom_pair=force_data["well_pot_atom_pair"][i], 
+                                            well_pot_limit_dist=force_data["well_pot_limit_dist"][i])
                 
+                B_e += WP.calc_energy(geom_num_list)
                 
-                grad_1, grad_2 = calc_well_potential_grad(geom_num_list[force_data["well_pot_atom_pair"][i][0]-1], geom_num_list[force_data["well_pot_atom_pair"][i][1]-1], force_data["well_pot_wall_energy"][i], force_data["well_pot_limit_dist"][i])
-                
-                BPA_grad_list[force_data["well_pot_atom_pair"][i][0]-1] += grad_1
-                BPA_grad_list[force_data["well_pot_atom_pair"][i][1]-1] += grad_2
-                
+                tensor_BPA_grad = torch.func.jacfwd(WP.calc_energy)(geom_num_list)
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                tensor_BPA_hessian = torch.func.hessian(WP.calc_energy)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+            else:
+                pass
+
         #------------------        
         if len(geom_num_list) > 2:
             for i in range(len(force_data["keep_angle_spring_const"])):
                 if force_data["keep_angle_spring_const"][i] != 0.0:
-                    AFIR_e += calc_keep_angle(geom_num_list[force_data["keep_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][2]-1], force_data["keep_angle_spring_const"][i], force_data["keep_angle_angle"][i])
+                    SKAngleP = StructKeepAnglePotential(keep_angle_atom_pairs=force_data["keep_angle_atom_pairs"][i], 
+                                                keep_angle_spring_const=force_data["keep_angle_spring_const"][i], 
+                                                keep_angle_angle=force_data["keep_angle_angle"][i])
                     
+                    B_e += SKAngleP.calc_energy(geom_num_list)
                     
-                    grad_1, grad_2, grad_3 = calc_keep_angle_grad(geom_num_list[force_data["keep_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_angle_atom_pairs"][i][2]-1], force_data["keep_angle_spring_const"][i], force_data["keep_angle_angle"][i])
-                    BPA_grad_list[force_data["keep_angle_atom_pairs"][i][0]-1] += grad_1
-                    BPA_grad_list[force_data["keep_angle_atom_pairs"][i][1]-1] += grad_2
-                    BPA_grad_list[force_data["keep_angle_atom_pairs"][i][2]-1] += grad_3
-                    if self.FC_COUNT == -1:
-                        pass
-                    elif iter % self.FC_COUNT == 0:
-                        pass 
-                else:
-                    pass
+                    tensor_BPA_grad = torch.func.jacfwd(SKAngleP.calc_energy)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(SKAngleP.calc_energy)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+
         else:
             pass
         
@@ -2854,18 +1834,18 @@ class BiasPotentialCalculation:
         if len(geom_num_list) > 3:
             for i in range(len(force_data["keep_dihedral_angle_spring_const"])):
                 if force_data["keep_dihedral_angle_spring_const"][i] != 0.0:
-                    AFIR_e += calc_keep_dihedral_angle(geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1], force_data["keep_dihedral_angle_spring_const"][i], force_data["keep_dihedral_angle_angle"][i])
+                    SKDAP = StructKeepDihedralAnglePotential(keep_dihedral_angle_spring_const=force_data["keep_dihedral_angle_spring_const"][i], 
+                                                keep_dihedral_angle_atom_pairs=force_data["keep_dihedral_angle_atom_pairs"][i], 
+                                                keep_dihedral_angle_angle=force_data["keep_dihedral_angle_angle"][i])
                     
-                    grad_1, grad_2, grad_3, grad_4 = calc_keep_dihedral_angle_grad(geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1], geom_num_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1], force_data["keep_dihedral_angle_spring_const"][i], force_data["keep_dihedral_angle_angle"][i])
+                    B_e += SKDAP.calc_energy(geom_num_list)
                     
-                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][0]-1] += grad_1
-                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][1]-1] += grad_2
-                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][2]-1] += grad_3
-                    BPA_grad_list[force_data["keep_dihedral_angle_atom_pairs"][i][3]-1] += grad_4
-                    if self.FC_COUNT == -1:
-                        pass
-                    elif iter % self.FC_COUNT == 0:
-                        pass
+                    tensor_BPA_grad = torch.func.jacfwd(SKDAP.calc_energy)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(SKDAP.calc_energy)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
                 else:
                     pass
         else:
@@ -2875,44 +1855,228 @@ class BiasPotentialCalculation:
         for i in range(len(force_data["void_point_pot_spring_const"])):
             if force_data["void_point_pot_spring_const"][i] != 0.0:
                 for j in force_data["void_point_pot_atoms"][i]:
-                    AFIR_e += calc_void_point_pot(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i])
+                    VPP = VoidPointPotential(void_point_pot_spring_const=force_data["void_point_pot_spring_const"][i], 
+                                            void_point_pot_atoms=j, 
+                                            void_point_pot_coord=self.ndarray2tensor(np.array(force_data["void_point_pot_coord"][i], dtype="float64")),
+                                            void_point_pot_distance=force_data["void_point_pot_distance"][i],
+                                            void_point_pot_order=force_data["void_point_pot_order"][i])
+
                     
-                    grad = calc_void_point_pot_grad(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i])
-                    BPA_grad_list[j-1] += grad
-                    if self.FC_COUNT == -1:
-                        pass
-                    elif iter % self.FC_COUNT == 0:
-                        BPA_hessian = calc_void_point_pot_hess(geom_num_list[j-1], np.array(force_data["void_point_pot_coord"][i], dtype="float64"), force_data["void_point_pot_spring_const"][i], force_data["void_point_pot_distance"][i], force_data["void_point_pot_order"][i], j, BPA_hessian)
+                    B_e += VPP.calc_energy(geom_num_list)
+                    
+                    tensor_BPA_grad = torch.func.jacfwd(VPP.calc_energy)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(VPP.calc_energy)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+              
             else:
                 pass
         
         #------------------
         for i in range(len(force_data["AFIR_gamma"])):
             if force_data["AFIR_gamma"][i] != 0.0:
-                AFIR_e += calc_AFIR_pot(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
+                AP = AFIRPotential(AFIR_gamma=force_data["AFIR_gamma"][i], 
+                                            AFIR_Fragm_1=force_data["AFIR_Fragm_1"][i], 
+                                            AFIR_Fragm_2=force_data["AFIR_Fragm_2"][i],
+                                            element_list=element_list)
                 
-                BPA_grad_list += calc_AFIR_grad(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list)
+                B_e += AP.calc_energy(geom_num_list)
                 
+                tensor_BPA_grad = torch.func.jacfwd(AP.calc_energy)(geom_num_list)
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
                 
-                
-                if self.FC_COUNT == -1:
-                    pass
-                elif iter % self.FC_COUNT == 0:
-                    BPA_hessian = calc_AFIR_hess(geom_num_list, force_data["AFIR_gamma"][i],  force_data["AFIR_Fragm_1"][i], force_data["AFIR_Fragm_2"][i], element_list, BPA_hessian)
+                tensor_BPA_hessian = torch.func.hessian(AP.calc_energy)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
             else:
                 pass
         #------------------        
-        new_g = g + BPA_grad_list
+        B_g = g + BPA_grad_list
 
         
-        self.Model_hess.model_hess += BPA_hessian 
         
+        B_e = B_e.detach().float()
         #new_geometry:ang. 
-        #AFIR_e:hartree
+        #B_e:hartree
         
-        return BPA_grad_list, AFIR_e, new_g
+        return BPA_grad_list, B_e, B_g, BPA_hessian
 
-class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
+#end of bias pot section 
+#----------------
+class FileIO:
+    def __init__(self, folder_dir, file):
+        self.BPA_FOLDER_DIRECTORY = folder_dir
+        self.START_FILE = file
+        return
+    def make_geometry_list(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """Load initial structure"""
+        geometry_list = []
+ 
+        with open(self.START_FILE,"r") as f:
+            words = f.readlines()
+            
+        start_data = []
+        for word in words:
+            start_data.append(word.split())
+            
+        electric_charge_and_multiplicity = start_data[0]
+        element_list = []
+            
+
+
+        for i in range(1, len(start_data)):
+            element_list.append(start_data[i][0])
+                
+        geometry_list.append(start_data)
+
+
+        return geometry_list, element_list, electric_charge_and_multiplicity
+
+    def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """load structure updated geometry for next QM calculation"""
+        new_geometry = new_geometry.tolist()
+        
+        geometry_list = []
+
+        new_data = [electric_charge_and_multiplicity]
+        for num, geometry in enumerate(new_geometry):
+           
+            geometry = list(map(str, geometry))
+            geometry = [element_list[num]] + geometry
+            new_data.append(geometry)
+            print(" ".join(geometry))
+            
+        geometry_list.append(new_data)
+        return geometry_list
+
+    def make_psi4_input_file(self, geometry_list, iter):
+        """structure updated geometry is saved."""
+        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        for y, geometry in enumerate(geometry_list):
+            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
+                for rows in geometry:
+                    for row in rows:
+                        w.write(str(row))
+                        w.write(" ")
+                    w.write("\n")
+        return file_directory
+
+
+    def xyz_file_make(self):
+        """optimized path is saved."""
+        print("\ngeometry collection processing...\n")
+        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
+        #print(file_list,"\n")
+        for m, file in enumerate(file_list):
+            #print(file,m)
+            with open(file,"r") as f:
+                sample = f.readlines()
+                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
+                    atom_num = len(sample)-1
+                    w.write(str(atom_num)+"\n")
+                    w.write("Frame "+str(m)+"\n")
+                del sample[0]
+                for i in sample:
+                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
+                        w2.write(i)
+        print("\ngeometry collection is completed...\n")
+        return
+    
+
+class Graph:
+    def __init__(self, folder_directory):
+        self.BPA_FOLDER_DIRECTORY = folder_directory
+        return
+    def double_plot(self, num_list, energy_list, energy_list_2, file_directory):
+        
+        fig = plt.figure()
+
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax2 = fig.add_subplot(2, 1, 2)
+
+        ax1.plot(num_list, energy_list, "g--.")
+        ax2.plot(num_list, energy_list_2, "b--.")
+
+        ax1.set_xlabel('ITR.')
+        ax2.set_xlabel('ITR.')
+
+        ax1.set_ylabel('Electronic Energy [kcal/mol]')
+        ax2.set_ylabel('Electronic Energy [kcal/mol]')
+        plt.title('normal_above AFIR_below')
+        plt.tight_layout()
+        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot.png", format="png", dpi=300)
+        plt.close()
+        return
+        
+    def single_plot(self, num_list, energy_list, file_directory, atom_num, axis_name_1="ITR. ", axis_name_2="cosθ", name="orthogonality"):
+        fig, ax = plt.subplots()
+        ax.plot(num_list,energy_list, "r--o" , markersize=2)
+
+        ax.set_title(str(atom_num))
+        ax.set_xlabel(axis_name_1)
+        ax.set_ylabel(axis_name_2)
+        fig.tight_layout()
+        fig.savefig(self.BPA_FOLDER_DIRECTORY+"Plot_"+name+"_"+str(atom_num)+".png", format="png", dpi=200)
+        plt.close()
+         
+        return
+
+
+class Calculationtools:
+    def __init__(self):
+        return
+    def project_out_hess_tr_and_rot(self, hessian, element_list, geomerty):
+        natoms = len(element_list)
+        elem_mass = np.array([atomic_mass(elem) for elem in element_list], dtype="float64")
+        
+        M = np.diag(np.repeat(elem_mass, 3))
+        #M_plus_sqrt = np.diag(np.repeat(elem_mass, 3) ** (0.5))
+        M_minus_sqrt = np.diag(np.repeat(elem_mass, 3) ** (-0.5))
+
+        m_plus_sqrt = np.repeat(elem_mass, 3) ** (0.5)
+        #m_minus_sqrt = np.repeat(elem_mass, 3) ** (-0.5)
+
+        mw_hessian = np.dot(np.dot(M_minus_sqrt, hessian), M_minus_sqrt)#mw = mass weighted
+        
+        tr_x = (np.tile(np.array([1, 0, 0]), natoms)).reshape(-1, 3)
+        tr_y = (np.tile(np.array([0, 1, 0]), natoms)).reshape(-1, 3)
+        tr_z = (np.tile(np.array([0, 0, 1]), natoms)).reshape(-1, 3)
+
+        mw_rot_x = np.cross(geomerty, tr_x).flatten() * m_plus_sqrt
+        mw_rot_y = np.cross(geomerty, tr_y).flatten() * m_plus_sqrt
+        mw_rot_z = np.cross(geomerty, tr_z).flatten() * m_plus_sqrt
+
+        mw_tr_x = tr_x.flatten() * m_plus_sqrt
+        mw_tr_y = tr_y.flatten() * m_plus_sqrt
+        mw_tr_z = tr_z.flatten() * m_plus_sqrt
+
+        TR_vectors = np.vstack([mw_tr_x, mw_tr_y, mw_tr_z, mw_rot_x, mw_rot_y, mw_rot_z])
+        
+        Q, R = np.linalg.qr(TR_vectors.T)
+        keep_indices = ~np.isclose(np.diag(R), 0, atol=1e-6, rtol=0)
+        TR_vectors = Q.T[keep_indices]
+        n_tr = len(TR_vectors)
+
+        P = np.identity(natoms * 3)
+        for vector in TR_vectors:
+            P -= np.outer(vector, vector)
+
+        hess_proj = np.dot(np.dot(P.T, mw_hessian), P)
+
+        eigenvalues, eigenvectors = np.linalg.eigh(hess_proj)
+        eigenvalues = eigenvalues[n_tr:]
+        eigenvectors = eigenvectors[:, n_tr:]
+        print("=== hessian projected out transition and rotation (before add bias potential) ===")
+        print("eigenvalues: ", eigenvalues)
+        return hess_proj
+    
+class BiasPotentialAddtion:
     def __init__(self, args):
     
         UVL = UnitValueLib()
@@ -3009,161 +2173,6 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         
         return
         
-    def make_geometry_list(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
-        """Load initial structure"""
-        geometry_list = []
- 
-        with open(self.START_FILE,"r") as f:
-            words = f.readlines()
-            
-        start_data = []
-        for word in words:
-            start_data.append(word.split())
-            
-        electric_charge_and_multiplicity = start_data[0]
-        element_list = []
-            
-
-
-        for i in range(1, len(start_data)):
-            element_list.append(start_data[i][0])
-                
-        geometry_list.append(start_data)
-
-
-        return geometry_list, element_list, electric_charge_and_multiplicity
-
-    def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
-        """load structure updated geometry for next QM calculation"""
-        new_geometry = new_geometry.tolist()
-        
-        geometry_list = []
-
-        new_data = [electric_charge_and_multiplicity]
-        for num, geometry in enumerate(new_geometry):
-           
-            geometry = list(map(str, geometry))
-            geometry = [element_list[num]] + geometry
-            new_data.append(geometry)
-            print(" ".join(geometry))
-            
-        geometry_list.append(new_data)
-        return geometry_list
-
-    def make_psi4_input_file(self, geometry_list, iter):
-        """structure updated geometry is saved."""
-        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
-        try:
-            os.mkdir(file_directory)
-        except:
-            pass
-        for y, geometry in enumerate(geometry_list):
-            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
-                for rows in geometry:
-                    for row in rows:
-                        w.write(str(row))
-                        w.write(" ")
-                    w.write("\n")
-        return file_directory
-
-    def double_plot(self, num_list, energy_list, energy_list_2, file_directory):
-        
-        fig = plt.figure()
-
-        ax1 = fig.add_subplot(2, 1, 1)
-        ax2 = fig.add_subplot(2, 1, 2)
-
-        ax1.plot(num_list, energy_list, "g--.")
-        ax2.plot(num_list, energy_list_2, "b--.")
-
-        ax1.set_xlabel('ITR.')
-        ax2.set_xlabel('ITR.')
-
-        ax1.set_ylabel('Electronic Energy [kcal/mol]')
-        ax2.set_ylabel('Electronic Energy [kcal/mol]')
-        plt.title('normal_above AFIR_below')
-        plt.tight_layout()
-        plt.savefig(self.BPA_FOLDER_DIRECTORY+"Energy_plot.png", format="png", dpi=300)
-        plt.close()
-        return
-        
-    def single_plot(self, num_list, energy_list, file_directory, atom_num, axis_name_1="ITR. ", axis_name_2="cosθ", name="orthogonality"):
-        fig, ax = plt.subplots()
-        ax.plot(num_list,energy_list, "r--o" , markersize=2)
-
-        ax.set_title(str(atom_num))
-        ax.set_xlabel(axis_name_1)
-        ax.set_ylabel(axis_name_2)
-        fig.tight_layout()
-        fig.savefig(self.BPA_FOLDER_DIRECTORY+"Plot_"+name+"_"+str(atom_num)+".png", format="png", dpi=200)
-        plt.close()
-         
-        return
-
-    def xyz_file_make(self):
-        """optimized path is saved."""
-        print("\ngeometry collection processing...\n")
-        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
-        #print(file_list,"\n")
-        for m, file in enumerate(file_list):
-            #print(file,m)
-            with open(file,"r") as f:
-                sample = f.readlines()
-                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
-                    atom_num = len(sample)-1
-                    w.write(str(atom_num)+"\n")
-                    w.write("Frame "+str(m)+"\n")
-                del sample[0]
-                for i in sample:
-                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
-                        w2.write(i)
-        print("\ngeometry collection is completed...\n")
-        return
-
-    def project_out_hess_tr_and_rot(self, hessian, element_list, geomerty):
-        natoms = len(element_list)
-        elem_mass = np.array([atomic_mass(elem) for elem in element_list], dtype="float64")
-        
-        M = np.diag(np.repeat(elem_mass, 3))
-        #M_plus_sqrt = np.diag(np.repeat(elem_mass, 3) ** (0.5))
-        M_minus_sqrt = np.diag(np.repeat(elem_mass, 3) ** (-0.5))
-
-        m_plus_sqrt = np.repeat(elem_mass, 3) ** (0.5)
-        #m_minus_sqrt = np.repeat(elem_mass, 3) ** (-0.5)
-
-        mw_hessian = np.dot(np.dot(M_minus_sqrt, hessian), M_minus_sqrt)#mw = mass weighted
-        
-        tr_x = (np.tile(np.array([1, 0, 0]), natoms)).reshape(-1, 3)
-        tr_y = (np.tile(np.array([0, 1, 0]), natoms)).reshape(-1, 3)
-        tr_z = (np.tile(np.array([0, 0, 1]), natoms)).reshape(-1, 3)
-
-        mw_rot_x = np.cross(geomerty, tr_x).flatten() * m_plus_sqrt
-        mw_rot_y = np.cross(geomerty, tr_y).flatten() * m_plus_sqrt
-        mw_rot_z = np.cross(geomerty, tr_z).flatten() * m_plus_sqrt
-
-        mw_tr_x = tr_x.flatten() * m_plus_sqrt
-        mw_tr_y = tr_y.flatten() * m_plus_sqrt
-        mw_tr_z = tr_z.flatten() * m_plus_sqrt
-
-        TR_vectors = np.vstack([mw_tr_x, mw_tr_y, mw_tr_z, mw_rot_x, mw_rot_y, mw_rot_z])
-        
-        Q, R = np.linalg.qr(TR_vectors.T)
-        keep_indices = ~np.isclose(np.diag(R), 0, atol=1e-6, rtol=0)
-        TR_vectors = Q.T[keep_indices]
-        n_tr = len(TR_vectors)
-
-        P = np.identity(natoms * 3)
-        for vector in TR_vectors:
-            P -= np.outer(vector, vector)
-
-        hess_proj = np.dot(np.dot(P.T, mw_hessian), P)
-
-        eigenvalues, eigenvectors = np.linalg.eigh(hess_proj)
-        eigenvalues = eigenvalues[n_tr:]
-        eigenvectors = eigenvectors[:, n_tr:]
-        print("=== hessian projected out transition and rotation (before add bias potential) ===")
-        print("eigenvalues: ", eigenvalues)
-        return hess_proj
 
     def psi4_calculation(self, file_directory, element_list, electric_charge_and_multiplicity, iter):
         """execute QM calclation."""
@@ -3240,7 +2249,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     eigenvalues, _ = np.linalg.eigh(exact_hess)
                     print("=== hessian (before add bias potential) ===")
                     print("eigenvalues: ", eigenvalues)
-                    exact_hess = self.project_out_hess_tr_and_rot(exact_hess, element_list, input_data_for_display)
+                    exact_hess = Calculationtools().project_out_hess_tr_and_rot(exact_hess, element_list, input_data_for_display)
 
                     self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
                 
@@ -3321,7 +2330,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             return sub_list
         force_data = {}
         #---------------------
-        if len(args.repulsive_potential) % 4 != 0:
+        if len(args.repulsive_potential) % 5 != 0:
             print("invaild input (-rp)")
             sys.exit(0)
         
@@ -3329,16 +2338,18 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         force_data["repulsive_potential_dist_scale"] = []
         force_data["repulsive_potential_Fragm_1"] = []
         force_data["repulsive_potential_Fragm_2"] = []
+        force_data["repulsive_potential_unit"] = []
         
-        for i in range(int(len(args.repulsive_potential)/4)):
-            force_data["repulsive_potential_well_scale"].append(float(args.repulsive_potential[4*i]))
-            force_data["repulsive_potential_dist_scale"].append(float(args.repulsive_potential[4*i+1]))
-            force_data["repulsive_potential_Fragm_1"].append(num_parse(args.repulsive_potential[4*i+2]))
-            force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[4*i+3]))
+        for i in range(int(len(args.repulsive_potential)/5)):
+            force_data["repulsive_potential_well_scale"].append(float(args.repulsive_potential[5*i]))
+            force_data["repulsive_potential_dist_scale"].append(float(args.repulsive_potential[5*i+1]))
+            force_data["repulsive_potential_Fragm_1"].append(num_parse(args.repulsive_potential[5*i+2]))
+            force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[5*i+3]))
+            force_data["repulsive_potential_unit"].append(str(args.repulsive_potential[5*i+4]))
         
 
         #---------------------
-        if len(args.repulsive_potential_v2) % 9 != 0:
+        if len(args.repulsive_potential_v2) % 10 != 0:
             print("invaild input (-rpv2)")
             sys.exit(0)
         
@@ -3351,17 +2362,19 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         force_data["repulsive_potential_v2_order_attr"] = []
         force_data["repulsive_potential_v2_center"] = []
         force_data["repulsive_potential_v2_target"] = []
+        force_data["repulsive_potential_v2_unit"] = []
         
-        for i in range(int(len(args.repulsive_potential_v2)/9)):
-            force_data["repulsive_potential_v2_well_scale"].append(float(args.repulsive_potential_v2[9*i+0]))
-            force_data["repulsive_potential_v2_dist_scale"].append(float(args.repulsive_potential_v2[9*i+1]))
-            force_data["repulsive_potential_v2_length"].append(float(args.repulsive_potential_v2[9*i+2]))
-            force_data["repulsive_potential_v2_const_rep"].append(float(args.repulsive_potential_v2[9*i+3]))
-            force_data["repulsive_potential_v2_const_attr"].append(float(args.repulsive_potential_v2[9*i+4]))
-            force_data["repulsive_potential_v2_order_rep"].append(float(args.repulsive_potential_v2[9*i+5]))
-            force_data["repulsive_potential_v2_order_attr"].append(float(args.repulsive_potential_v2[9*i+6]))
-            force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[9*i+7]))
-            force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[9*i+8]))
+        for i in range(int(len(args.repulsive_potential_v2)/10)):
+            force_data["repulsive_potential_v2_well_scale"].append(float(args.repulsive_potential_v2[10*i+0]))
+            force_data["repulsive_potential_v2_dist_scale"].append(float(args.repulsive_potential_v2[10*i+1]))
+            force_data["repulsive_potential_v2_length"].append(float(args.repulsive_potential_v2[10*i+2]))
+            force_data["repulsive_potential_v2_const_rep"].append(float(args.repulsive_potential_v2[10*i+3]))
+            force_data["repulsive_potential_v2_const_attr"].append(float(args.repulsive_potential_v2[10*i+4]))
+            force_data["repulsive_potential_v2_order_rep"].append(float(args.repulsive_potential_v2[10*i+5]))
+            force_data["repulsive_potential_v2_order_attr"].append(float(args.repulsive_potential_v2[10*i+6]))
+            force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[10*i+7]))
+            force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[10*i+8]))
+            force_data["repulsive_potential_v2_unit"].append(str(args.repulsive_potential_v2[10*i+9]))
             if len(force_data["repulsive_potential_v2_center"][i]) != 2:
                 print("invaild input (-rpv2 center)")
                 sys.exit(0)
@@ -3494,12 +2507,8 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             force_data["void_point_pot_atoms"].append(num_parse(args.void_point_pot[5*i+3]))
             force_data["void_point_pot_order"].append(float(args.void_point_pot[5*i+4]))
         #---------------------
-        if len(args.gaussian_pot) > 1:
-            print("invaild input (-gp)")
-            sys.exit(0)
+
         
-        for i in range(int(len(args.gaussian_pot))):
-            force_data["gaussian_pot_energy"] = float(args.gaussian_pot[i])
         
         if len(args.fix_atoms) > 0:
             force_data["fix_atoms"] = num_parse(args.fix_atoms[0])
@@ -3515,10 +2524,11 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         return force_data
 
     def main(self):
+        FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
         force_data = self.force_data_parser(args)
         finish_frag = False
-        geometry_list, element_list, electric_charge_and_multiplicity = self.make_geometry_list()
-        file_directory = self.make_psi4_input_file(geometry_list, 0)
+        geometry_list, element_list, electric_charge_and_multiplicity = FIO.make_geometry_list()
+        file_directory = FIO.make_psi4_input_file(geometry_list, 0)
         #------------------------------------
         
         adam_m = []
@@ -3535,13 +2545,15 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
         #-----------------------------------
         with open(self.BPA_FOLDER_DIRECTORY+"input.txt", "w") as f:
             f.write(str(args))
-        pre_AFIR_e = 0.0
+        pre_B_e = 0.0
         pre_e = 0.0
+        pre_B_g = []
         pre_g = []
         for i in range(len(element_list)):
-            pre_g.append(np.array([0,0,0], dtype="float64"))
+            pre_B_g.append(np.array([0,0,0], dtype="float64"))
        
-        pre_move_vector = pre_g
+        pre_move_vector = pre_B_g
+        pre_g = pre_B_g
         #-------------------------------------
         finish_frag = False
         exit_flag = False
@@ -3602,19 +2614,20 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
             if finish_frag:#If QM calculation doesnt end, the process of this program is terminated. 
                 break   
             CalcBiaspot = BiasPotentialCalculation(self.Model_hess, self.FC_COUNT)
-            _, AFIR_e, new_g = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_g, iter, GeoInfo)#new_geometry:ang.
-            self.Model_hess = CalcBiaspot.Model_hess
+            _, B_e, B_g, BPA_hessian = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_B_g, iter, GeoInfo)#new_geometry:ang.
+            
+
             #----------------------------
 
             #----------------------------
             
-            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, self.FC_COUNT, self.temperature)
-            new_geometry, move_vector, iter, Opt_params, Model_hess = CMV.calc_move_vector(iter, geom_num_list, new_g, force_data["opt_method"], pre_g, pre_geom, AFIR_e, pre_AFIR_e, pre_move_vector, e, pre_e, initial_geom_num_list)
+            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, BPA_hessian, self.FC_COUNT, self.temperature)
+            new_geometry, move_vector, iter, Opt_params, Model_hess = CMV.calc_move_vector(iter, geom_num_list, B_g, force_data["opt_method"], pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, e, pre_e, initial_geom_num_list, g, pre_g)
             self.Opt_params = Opt_params
             self.Model_hess = Model_hess
 
             self.ENERGY_LIST_FOR_PLOTTING.append(e*self.hartree2kcalmol)
-            self.AFIR_ENERGY_LIST_FOR_PLOTTING.append(AFIR_e*self.hartree2kcalmol)
+            self.AFIR_ENERGY_LIST_FOR_PLOTTING.append(B_e*self.hartree2kcalmol)
             self.NUM_LIST.append(int(iter))
             
             #--------------------geometry info
@@ -3624,7 +2637,7 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 data_list, data_name_list = CSI.Data_extract(glob.glob(file_directory+"/*.xyz")[0], force_data["geom_info"])
                 
                 for num, i in enumerate(force_data["geom_info"]):
-                    cos = CSI.calculate_cos(new_g[i-1] - g[i-1], g[i-1])
+                    cos = CSI.calculate_cos(B_g[i-1] - g[i-1], g[i-1])
                     cos_list[num].append(cos)
                 if iter == 0:
                     with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:
@@ -3632,23 +2645,25 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                 
                 with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:    
                     f.write(",".join(list(map(str,data_list)))+"\n")
-
+                    
+            
             #----------------------------
+            displacement_vector = geom_num_list - pre_geom
             print("caluculation results (unit a.u.):")
             print("OPT method            : {} ".format(force_data["opt_method"]))
             print("                         Value                         Threshold ")
             print("ENERGY                : {:>15.12f} ".format(e))
-            print("BIAS  ENERGY          : {:>15.12f} ".format(AFIR_e))
-            print("Maxinum  Force        : {0:>15.12f}             {1:>15.12f} ".format(abs(new_g.max()), self.MAX_FORCE_THRESHOLD))
-            print("RMS      Force        : {0:>15.12f}             {1:>15.12f} ".format(abs(np.sqrt(np.square(new_g).mean())), self.RMS_FORCE_THRESHOLD))
-            print("Maxinum  Displacement : {0:>15.12f}             {1:>15.12f} ".format(abs(move_vector.max()), self.MAX_DISPLACEMENT_THRESHOLD))
-            print("RMS      Displacement : {0:>15.12f}             {1:>15.12f} ".format(abs(np.sqrt(np.square(move_vector).mean())), self.RMS_DISPLACEMENT_THRESHOLD))
+            print("BIAS  ENERGY          : {:>15.12f} ".format(B_e))
+            print("Maxinum  Force        : {0:>15.12f}             {1:>15.12f} ".format(abs(B_g.max()), self.MAX_FORCE_THRESHOLD))
+            print("RMS      Force        : {0:>15.12f}             {1:>15.12f} ".format(abs(np.sqrt(B_g**2).mean()), self.RMS_FORCE_THRESHOLD))
+            print("Maxinum  Displacement : {0:>15.12f}             {1:>15.12f} ".format(abs(displacement_vector.max()), self.MAX_DISPLACEMENT_THRESHOLD))
+            print("RMS      Displacement : {0:>15.12f}             {1:>15.12f} ".format(abs(np.sqrt(displacement_vector**2).mean()), self.RMS_DISPLACEMENT_THRESHOLD))
             print("ENERGY SHIFT          : {:>15.12f} ".format(e - pre_e))
-            print("BIAS ENERGY SHIFT     : {:>15.12f} ".format(AFIR_e - pre_AFIR_e))
+            print("BIAS ENERGY SHIFT     : {:>15.12f} ".format(B_e - pre_B_e))
             
             
             grad_list.append(np.linalg.norm(g))
-            if abs(new_g.max()) < self.MAX_FORCE_THRESHOLD and abs(np.sqrt(np.square(new_g).mean())) < self.RMS_FORCE_THRESHOLD and  abs(move_vector.max()) < self.MAX_DISPLACEMENT_THRESHOLD and abs(np.sqrt(np.square(move_vector).mean())) < self.RMS_DISPLACEMENT_THRESHOLD:#convergent criteria
+            if abs(B_g.max()) < self.MAX_FORCE_THRESHOLD and abs(np.sqrt(B_g**2).mean()) < self.RMS_FORCE_THRESHOLD and  abs(displacement_vector.max()) < self.MAX_DISPLACEMENT_THRESHOLD and abs(np.sqrt(displacement_vector**2).mean()) < self.RMS_DISPLACEMENT_THRESHOLD:#convergent criteria
                 break
             #-------------------------
             print("\ngeometry:")
@@ -3658,26 +2673,28 @@ class BiasPotentialAddtion:#this class is GOD class, so this class isn't good.
                     
             #----------------------------
             
-            pre_AFIR_e = AFIR_e#Hartree
+            pre_B_e = B_e#Hartree
             pre_e = e
-            pre_g = new_g#Hartree/Bohr
+            pre_B_g = B_g#Hartree/Bohr
+            pre_g = g
             pre_geom = geom_num_list#Bohr
             pre_move_vector = move_vector
             
-            geometry_list = self.make_geometry_list_2(new_geometry, element_list, electric_charge_and_multiplicity)
-            file_directory = self.make_psi4_input_file(geometry_list, iter+1)
+            geometry_list = FIO.make_geometry_list_2(new_geometry, element_list, electric_charge_and_multiplicity)
+            file_directory = FIO.make_psi4_input_file(geometry_list, iter+1)
             #----------------------------
 
             #----------------------------
         #plot graph
-        self.double_plot(self.NUM_LIST, self.ENERGY_LIST_FOR_PLOTTING, self.AFIR_ENERGY_LIST_FOR_PLOTTING, file_directory)
-        self.single_plot(self.NUM_LIST, grad_list, file_directory, "", axis_name_2="gradient [a.u.]", name="gradient")
+        G = Graph(self.BPA_FOLDER_DIRECTORY)
+        G.double_plot(self.NUM_LIST, self.ENERGY_LIST_FOR_PLOTTING, self.AFIR_ENERGY_LIST_FOR_PLOTTING, file_directory)
+        G.single_plot(self.NUM_LIST, grad_list, file_directory, "", axis_name_2="gradient [a.u.]", name="gradient")
         if len(force_data["geom_info"]) > 1:
             for num, i in enumerate(force_data["geom_info"]):
                 self.single_plot(self.NUM_LIST, cos_list[num], file_directory, i)
         
         #
-        self.xyz_file_make()
+        FIO.xyz_file_make()
         
         local_max_energy_list_index = argrelextrema(np.array(self.ENERGY_LIST_FOR_PLOTTING), np.greater)
         with open(self.BPA_FOLDER_DIRECTORY+"approx_TS.txt","w") as f:
