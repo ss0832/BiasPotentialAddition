@@ -211,6 +211,7 @@ Use GFN2-xTB method to optimize molecular structure.
 
 Second derivative of each bias potential is analytically formulated and implemented.
 - (2023/09/01) Some of second derivative of bias potentials is implemented with exceptions of keep angle and keep dihedral angle.
+- (2023/11/11) Autograd function (pytorch) Calculates all derivatives. 
 
 ## Author
 
