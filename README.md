@@ -9,7 +9,7 @@ About AFIR: https://afir.sci.hokudai.ac.jp/documents/manual/2
 
 - It is intended to be used in a linux environment.
 - It can be used not only with AFIR functions, but also with other bias potentials.
-- The first derivative of the bias potential is computed analytically.
+
 
 
 ## Required Modules
@@ -19,6 +19,7 @@ About AFIR: https://afir.sci.hokudai.ac.jp/documents/manual/2
  - matplotlib
  - scipy
  - tblite (If you use extended tight binding method, this module is required.)
+ - pytorch (for calculating derivatives)
 ## References
 
 References are given in the source code.
