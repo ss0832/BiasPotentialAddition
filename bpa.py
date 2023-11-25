@@ -23,15 +23,18 @@ except:
     sys.exit(1)
 
 try:
-    import psi4
+    import pyscf
+    from pyscf.hessian import thermo
 except:
-    print("You can't use psi4.")
-
+    print("You can't use pyscf.")
 try:
     from tblite.interface import Calculator
 except:
     print("You can't use extended tight binding method.")
-
+try:
+    import psi4
+except:
+    print("You can't use psi4.")
 
 
 """
@@ -70,6 +73,9 @@ FSB
  J. Chem. Phys. 1999, 111, 10806
 Psi4
  D. G. A. Smith, L. A. Burns, A. C. Simmonett, R. M. Parrish, M. C. Schieber, R. Galvelis, P. Kraus, H. Kruse, R. Di Remigio, A. Alenaizan, A. M. James, S. Lehtola, J. P. Misiewicz, M. Scheurer, R. A. Shaw, J. B. Schriber, Y. Xie, Z. L. Glick, D. A. Sirianni, J. S. O'Brien, J. M. Waldrop, A. Kumar, E. G. Hohenstein, B. P. Pritchard, B. R. Brooks, H. F. Schaefer III, A. Yu. Sokolov, K. Patkowski, A. E. DePrince III, U. Bozkaya, R. A. King, F. A. Evangelista, J. M. Turney, T. D. Crawford, C. D. Sherrill, "Psi4 1.4: Open-Source Software for High-Throughput Quantum Chemistry", J. Chem. Phys. 152(18) 184108 (2020).
+ 
+PySCF
+Recent developments in the PySCF program package, Qiming Sun, Xing Zhang, Samragni Banerjee, Peng Bao, Marc Barbry, Nick S. Blunt, Nikolay A. Bogdanov, George H. Booth, Jia Chen, Zhi-Hao Cui, Janus J. Eriksen, Yang Gao, Sheng Guo, Jan Hermann, Matthew R. Hermes, Kevin Koh, Peter Koval, Susi Lehtola, Zhendong Li, Junzi Liu, Narbe Mardirossian, James D. McClain, Mario Motta, Bastien Mussard, Hung Q. Pham, Artem Pulkin, Wirawan Purwanto, Paul J. Robinson, Enrico Ronca, Elvira R. Sayfutyarova, Maximilian Scheurer, Henry F. Schurkus, James E. T. Smith, Chong Sun, Shi-Ning Sun, Shiv Upadhyay, Lucas K. Wagner, Xiao Wang, Alec White, James Daniel Whitfield, Mark J. Williamson, Sebastian Wouters, Jun Yang, Jason M. Yu, Tianyu Zhu, Timothy C. Berkelbach, Sandeep Sharma, Alexander Yu. Sokolov, and Garnet Kin-Lic Chan, J. Chem. Phys., 153, 024109 (2020). doi:10.1063/5.0006074
 
 GFN2-xTB(tblite)
 J. Chem. Theory Comput. 2019, 15, 3, 1652–1671 
@@ -113,6 +119,9 @@ def parser():
     parser.add_argument("-fc", "--calc_exact_hess",  type=int, default=-1, help='calculate exact hessian per steps (ex.) [steps per one hess calculation]')
     parser.add_argument("-xtb", "--usextb",  type=str, default="None", help='use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB ')
     parser.add_argument('-dsafir','--DS_AFIR', help="use DS-AFIR method.", action='store_true')
+    parser.add_argument('-pyscf','--pyscf', help="use pyscf module.", action='store_true')
+    parser.add_argument("-elec", "--electronic_charge", nargs="*",  type=int, default=0, help='formal electronic charge ( for pyscf ) (ex.) [charge (0)]')
+    parser.add_argument("-spin", "--spin_multiplicity", nargs="*",  type=int, default=0, help='spin multiplcity ( for pyscf ) (please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
     args = parser.parse_args()
     return args
 
@@ -149,6 +158,9 @@ class Interface:
         self.calc_exact_hess = -1#calculate exact hessian per steps (ex.) [steps per one hess calculation]
         self.usextb = "None"#use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB 
         self.DS_AFIR = False
+        self.pyscf = False
+        self.electronic_charge = 0
+        self.spin_multiplicity = 0
         return
 
 #------------------------------------------
@@ -2506,6 +2518,29 @@ class FileIO:
 
         return geometry_list, element_list, electric_charge_and_multiplicity
 
+    def make_geometry_list_for_pyscf(self):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """Load initial structure"""
+        geometry_list = []
+ 
+        with open(self.START_FILE,"r") as f:
+            words = f.readlines()
+            
+        start_data = []
+        for word in words[2:]:
+            start_data.append(word.split())
+            
+        element_list = []
+            
+
+
+        for i in range(len(start_data)):
+            element_list.append(start_data[i][0])
+                
+        geometry_list.append(start_data)
+
+
+        return geometry_list, element_list
+
     def make_geometry_list_2(self, new_geometry, element_list, electric_charge_and_multiplicity):#numbering name of function is not good. (ex. function_1, function_2, ...) 
         """load structure updated geometry for next QM calculation"""
         new_geometry = new_geometry.tolist()
@@ -2523,7 +2558,25 @@ class FileIO:
         geometry_list.append(new_data)
         print("-----")
         return geometry_list
+        
+    def make_geometry_list_2_for_pyscf(self, new_geometry, element_list):#numbering name of function is not good. (ex. function_1, function_2, ...) 
+        """load structure updated geometry for next QM calculation"""
+        new_geometry = new_geometry.tolist()
+        
+        geometry_list = []
 
+        new_data = []
+        for num, geometry in enumerate(new_geometry):
+           
+            geometry = list(map(str, geometry))
+            geometry = [element_list[num]] + geometry
+            new_data.append(geometry)
+            print(" ".join(geometry))
+            
+        geometry_list.append(new_data)
+        print("-----")
+        return geometry_list
+        
     def make_psi4_input_file(self, geometry_list, iter):
         """structure updated geometry is saved."""
         file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
@@ -2540,8 +2593,44 @@ class FileIO:
                     w.write("\n")
         return file_directory
 
-
-    
+    def make_pyscf_input_file(self, geometry_list, iter):
+        """structure updated geometry is saved."""
+        file_directory = self.BPA_FOLDER_DIRECTORY+"samples_"+str(self.START_FILE[:-4])+"_"+str(iter)
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        for y, geometry in enumerate(geometry_list):
+            with open(file_directory+"/"+self.START_FILE[:-4]+"_"+str(y)+".xyz","w") as w:
+                w.write(str(len(geometry))+"\n\n")
+                for rows in geometry:
+                    
+                    for row in rows:
+                        w.write(str(row))
+                        w.write(" ")
+                    w.write("\n")
+        return file_directory
+        
+    def xyz_file_make_for_pyscf(self):
+        """optimized path is saved."""
+        print("\ngeometry collection processing...\n")
+        file_list = glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9]/*.xyz") + glob.glob(self.BPA_FOLDER_DIRECTORY+"samples_*_[0-9][0-9][0-9][0-9][0-9][0-9]/*.xyz")  
+        #print(file_list,"\n")
+        for m, file in enumerate(file_list):
+            #print(file,m)
+            with open(file,"r") as f:
+                sample = f.readlines()
+                with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
+                    atom_num = len(sample)-1
+                    w.write(str(atom_num)+"\n")
+                    w.write("Frame "+str(m)+"\n")
+                
+                for i in sample:
+                    with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
+                        w2.write(i)
+        print("\ngeometry collection is completed...\n")
+        return
+        
     def xyz_file_make(self):
         """optimized path is saved."""
         print("\ngeometry collection processing...\n")
@@ -2561,6 +2650,7 @@ class FileIO:
                         w2.write(i)
         print("\ngeometry collection is completed...\n")
         return
+        
     def xyz_file_make_for_DSAFIR(self):
         """optimized path is saved."""
         print("\ngeometry collection processing...\n")
@@ -2945,13 +3035,28 @@ class BiasPotentialAddtion:
             print("invaild input (-sub_bs)")
             sys.exit(0)
         
-        self.SUB_BASIS_SET = "" # 
-        if len(args.sub_basisset) > 0:
-            self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
-            for j in range(int(len(args.sub_basisset)/2)):
-                self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
-            print("Basis Sets defined by User are detected.")
-            print(self.SUB_BASIS_SET) #
+        if args.pyscf:
+            self.electronic_charge = args.electronic_charge
+            self.spin_multiplicity = args.spin_multiplicity
+            self.SUB_BASIS_SET = {}
+            if len(args.sub_basisset) > 0:
+                self.SUB_BASIS_SET["default"] = str(self.BASIS_SET) # 
+                for j in range(int(len(args.sub_basisset)/2)):
+                    self.SUB_BASIS_SET[args.sub_basisset[2*j]] = args.sub_basisset[2*j+1]
+                print("Basis Sets defined by User are detected.")
+                print(self.SUB_BASIS_SET) #
+            else:
+                self.SUB_BASIS_SET = { "default" : self.BASIS_SET}
+        else:
+            self.SUB_BASIS_SET = "" # 
+        
+            if len(args.sub_basisset) > 0:
+                self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
+                for j in range(int(len(args.sub_basisset)/2)):
+                    self.SUB_BASIS_SET += "assign "+args.sub_basisset[2*j]+" "+args.sub_basisset[2*j+1]+"\n"
+                print("Basis Sets defined by User are detected.")
+                print(self.SUB_BASIS_SET) #
+            
         #-----------------------------
         if args.usextb == "None":
             self.BPA_FOLDER_DIRECTORY = str(datetime.datetime.now().date())+"/"+self.START_FILE[:-4]+"_BPA_"+self.FUNCTIONAL+"_"+self.BASIS_SET+"_"+str(time.time())+"/"
@@ -3057,6 +3162,87 @@ class BiasPotentialAddtion:
                 
             psi4.core.clean() 
         return e, g, input_data_for_display, finish_frag
+
+
+    def pyscf_calculation(self, file_directory, element_list, iter):
+        """execute QM calclation."""
+        gradient_list = []
+        energy_list = []
+        geometry_num_list = []
+        geometry_optimized_num_list = []
+        finish_frag = False
+        try:
+            os.mkdir(file_directory)
+        except:
+            pass
+        file_list = glob.glob(file_directory+"/*_[0-9].xyz")
+        for num, input_file in enumerate(file_list):
+            try:
+                
+                pyscf.lib.num_threads(self.N_THREAD)
+                
+                with open(input_file, "r") as f:
+                    words = f.readlines()
+                input_data_for_display = []
+                for word in words[2:]:
+                    input_data_for_display.append(np.array(word.split()[1:4], dtype="float64")/self.bohr2angstroms)
+                input_data_for_display = np.array(input_data_for_display, dtype="float64")
+                
+                print("\n",input_file,"\n")
+                mol = pyscf.gto.M(atom = input_file,
+                                  charge = self.electronic_charge,
+                                  spin = self.spin_multiplicity,
+                                  basis = self.SUB_BASIS_SET,
+                                  max_memory = float(self.SET_MEMORY.replace("GB","")) * 1024, #SET_MEMORY unit is GB
+                                  verbose=3)
+                if self.FUNCTIONAL == "hf" or self.FUNCTIONAL == "HF":
+                    if int(self.spin_multiplicity) > 0:
+                        mf = mol.UHF().x2c()
+                    else:
+                        mf = mol.RHF()
+                else:
+                    if int(self.spin_multiplicity) > 1:
+                        mf = mol.UKS().x2c().density_fit()
+                    else:
+                        mf = mol.RKS().density_fit()
+                    mf.xc = self.FUNCTIONAL
+   
+            
+          
+                g = mf.run().nuc_grad_method().kernel()
+                e = float(vars(mf)["e_tot"])
+                g = np.array(g, dtype = "float64")
+
+                print("\n")
+
+
+                if self.FC_COUNT == -1:
+                    pass
+                
+                elif iter % self.FC_COUNT == 0:
+                    
+                    """exact hessian"""
+                    exact_hess = mf.Hessian().kernel()
+                    
+                    freqs = thermo.harmonic_analysis(mf.mol, exact_hess)
+                    exact_hess = exact_hess.transpose(0,2,1,3).reshape(len(input_data_for_display)*3, len(input_data_for_display)*3)
+                    print("frequencies: \n",freqs["freq_wavenumber"])
+                    eigenvalues, _ = np.linalg.eigh(exact_hess)
+                    print("=== hessian (before add bias potential) ===")
+                    print("eigenvalues: ", eigenvalues)
+                    exact_hess = Calculationtools().project_out_hess_tr_and_rot(exact_hess, element_list, input_data_for_display)
+
+                    self.Model_hess = Model_hess_tmp(exact_hess, momentum_disp=self.Model_hess.momentum_disp, momentum_grad=self.Model_hess.momentum_grad)
+
+            except Exception as error:
+                print(error)
+                print("This molecule could not be optimized.")
+                finish_frag = True
+                return 0, 0, 0, finish_frag   
+            
+      
+        return e, g, input_data_for_display, finish_frag
+        
 
     def tblite_calculation(self, file_directory, element_number_list, electric_charge_and_multiplicity, iter, method):
         """execute extended tight binding method calclation."""
@@ -3390,6 +3576,7 @@ class BiasPotentialAddtion:
         """
         DS-AFIR ref.:S. Maeda, et al., J. Comput. Chem., 2018, 39, 233–251.
         """
+
         FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
         finish_frag = False
         force_data = self.force_data_parser(args)
@@ -3797,6 +3984,7 @@ class BiasPotentialAddtion:
         return
 
     def main_for_BPA(self):
+
         FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
         trust_radii = 0.01
         force_data = self.force_data_parser(args)
@@ -3987,13 +4175,197 @@ class BiasPotentialAddtion:
         print("Complete...")
         return
     
+    def main_for_BPA_using_pyscf(self):
+        FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
+        trust_radii = 0.01
+        force_data = self.force_data_parser(args)
+        finish_frag = False
+        geometry_list, element_list = FIO.make_geometry_list_for_pyscf()
+        file_directory = FIO.make_pyscf_input_file(geometry_list, 0)
+        #------------------------------------
+        
+        adam_m = []
+        adam_v = []    
+        for i in range(len(element_list)):
+            adam_m.append(np.array([0,0,0], dtype="float64"))
+            adam_v.append(np.array([0,0,0], dtype="float64"))        
+        adam_m = np.array(adam_m, dtype="float64")
+        adam_v = np.array(adam_v, dtype="float64")    
+        self.Opt_params = Opt_calc_tmps(adam_m, adam_v, 0)
+        self.Model_hess = Model_hess_tmp(np.eye(len(element_list*3)))
+         
+        CalcBiaspot = BiasPotentialCalculation(self.Model_hess, self.FC_COUNT)
+        #-----------------------------------
+        with open(self.BPA_FOLDER_DIRECTORY+"input.txt", "w") as f:
+            f.write(str(args))
+        pre_B_e = 0.0
+        pre_e = 0.0
+        pre_B_g = []
+        pre_g = []
+        for i in range(len(element_list)):
+            pre_B_g.append(np.array([0,0,0], dtype="float64"))
+       
+        pre_move_vector = pre_B_g
+        pre_g = pre_B_g
+        #-------------------------------------
+        finish_frag = False
+        exit_flag = False
+        #-----------------------------------
+
+        #----------------------------------
+        
+        cos_list = [[] for i in range(len(force_data["geom_info"]))]
+        grad_list = []
+
+        #----------------------------------
+        for iter in range(self.NSTEP):
+            exit_file_detect = glob.glob(self.BPA_FOLDER_DIRECTORY+"*.txt")
+            for file in exit_file_detect:
+                if "end.txt" in file:
+                    exit_flag = True
+                    break
+            if exit_flag:
+                break
+            print("\n# ITR. "+str(iter)+"\n")
+            #---------------------------------------
+
+            e, g, geom_num_list, finish_frag = self.pyscf_calculation(file_directory, element_list, iter)
+            
+            #---------------------------------------
+            if iter == 0:
+                initial_geom_num_list = geom_num_list
+                pre_geom = initial_geom_num_list
+                
+            else:
+                pass
+
+            #-------------------energy profile 
+            if iter == 0:
+                with open(self.BPA_FOLDER_DIRECTORY+"energy_profile.csv","a") as f:
+                    f.write("energy [hartree] \n")
+            with open(self.BPA_FOLDER_DIRECTORY+"energy_profile.csv","a") as f:
+                f.write(str(e)+"\n")
+            #-------------------gradient profile
+            if iter == 0:
+                with open(self.BPA_FOLDER_DIRECTORY+"gradient_profile.csv","a") as f:
+                    f.write("gradient [hartree/Bohr] \n")
+            with open(self.BPA_FOLDER_DIRECTORY+"gradient_profile.csv","a") as f:
+                f.write(str(np.linalg.norm(g))+"\n")
+            #-------------------
+            if finish_frag:#If QM calculation doesnt end, the process of this program is terminated. 
+                break   
+            
+            CalcBiaspot.Model_hess = self.Model_hess
+            
+            _, B_e, B_g, BPA_hessian = CalcBiaspot.main(e, g, geom_num_list, element_list, force_data, pre_B_g, iter, initial_geom_num_list)#new_geometry:ang.
+            
+
+            #----------------------------
+
+            #----------------------------
+            
+            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, BPA_hessian, trust_radii, self.FC_COUNT, self.temperature)
+            new_geometry, move_vector, Opt_params, Model_hess, trust_radii = CMV.calc_move_vector(iter, geom_num_list, B_g, force_data["opt_method"], pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, initial_geom_num_list, g, pre_g)
+            self.Opt_params = Opt_params
+            self.Model_hess = Model_hess
+
+            self.ENERGY_LIST_FOR_PLOTTING.append(e*self.hartree2kcalmol)
+            self.AFIR_ENERGY_LIST_FOR_PLOTTING.append(B_e*self.hartree2kcalmol)
+            self.NUM_LIST.append(int(iter))
+            
+            #--------------------geometry info
+            if len(force_data["geom_info"]) > 1:
+                CSI = CalculationStructInfo()
+               
+                data_list, data_name_list = CSI.Data_extract(glob.glob(file_directory+"/*.xyz")[0], force_data["geom_info"])
+                
+                for num, i in enumerate(force_data["geom_info"]):
+                    cos = CSI.calculate_cos(B_g[i-1] - g[i-1], g[i-1])
+                    cos_list[num].append(cos)
+                if iter == 0:
+                    with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:
+                        f.write(",".join(data_name_list)+"\n")
+                
+                with open(self.BPA_FOLDER_DIRECTORY+"geometry_info.csv","a") as f:    
+                    f.write(",".join(list(map(str,data_list)))+"\n")
+                    
+            
+            #----------------------------
+            displacement_vector = geom_num_list - pre_geom
+            print("caluculation results (unit a.u.):")
+            print("OPT method            : {} ".format(force_data["opt_method"]))
+            print("                         Value                         Threshold ")
+            print("ENERGY                : {:>15.12f} ".format(e))
+            print("BIAS  ENERGY          : {:>15.12f} ".format(B_e))
+            print("Maxinum  Force        : {0:>15.12f}             {1:>15.12f} ".format(abs(B_g.max()), self.MAX_FORCE_THRESHOLD))
+            print("RMS      Force        : {0:>15.12f}             {1:>15.12f} ".format(abs(np.sqrt(B_g**2).mean()), self.RMS_FORCE_THRESHOLD))
+            print("Maxinum  Displacement : {0:>15.12f}             {1:>15.12f} ".format(abs(displacement_vector.max()), self.MAX_DISPLACEMENT_THRESHOLD))
+            print("RMS      Displacement : {0:>15.12f}             {1:>15.12f} ".format(abs(np.sqrt(displacement_vector**2).mean()), self.RMS_DISPLACEMENT_THRESHOLD))
+            print("ENERGY SHIFT          : {:>15.12f} ".format(e - pre_e))
+            print("BIAS ENERGY SHIFT     : {:>15.12f} ".format(B_e - pre_B_e))
+            
+            
+            grad_list.append(np.linalg.norm(g))
+            if abs(B_g.max()) < self.MAX_FORCE_THRESHOLD and abs(np.sqrt(B_g**2).mean()) < self.RMS_FORCE_THRESHOLD and  abs(displacement_vector.max()) < self.MAX_DISPLACEMENT_THRESHOLD and abs(np.sqrt(displacement_vector**2).mean()) < self.RMS_DISPLACEMENT_THRESHOLD:#convergent criteria
+                break
+            #-------------------------
+            print("\ngeometry:")
+            if len(force_data["fix_atoms"]) > 0:
+                for j in force_data["fix_atoms"]:
+                    new_geometry[j-1] = copy.copy(initial_geom_num_list[j-1]*self.bohr2angstroms)
+                    
+            #----------------------------
+            
+            pre_B_e = B_e#Hartree
+            pre_e = e
+            pre_B_g = B_g#Hartree/Bohr
+            pre_g = g
+            pre_geom = geom_num_list#Bohr
+            pre_move_vector = move_vector
+            
+            geometry_list = FIO.make_geometry_list_2_for_pyscf(new_geometry, element_list)
+            file_directory = FIO.make_pyscf_input_file(geometry_list, iter+1)
+            #----------------------------
+
+            #----------------------------
+        #plot graph
+        G = Graph(self.BPA_FOLDER_DIRECTORY)
+        G.double_plot(self.NUM_LIST, self.ENERGY_LIST_FOR_PLOTTING, self.AFIR_ENERGY_LIST_FOR_PLOTTING)
+        G.single_plot(self.NUM_LIST, grad_list, file_directory, "", axis_name_2="gradient [a.u.]", name="gradient")
+        if len(force_data["geom_info"]) > 1:
+            for num, i in enumerate(force_data["geom_info"]):
+                self.single_plot(self.NUM_LIST, cos_list[num], file_directory, i)
+        
+        #
+        FIO.xyz_file_make_for_pyscf()
+        
+        FIO.argrelextrema_txt_save(self.ENERGY_LIST_FOR_PLOTTING, "approx_TS", "max")
+        FIO.argrelextrema_txt_save(self.ENERGY_LIST_FOR_PLOTTING, "approx_EQ", "min")
+        FIO.argrelextrema_txt_save(grad_list, "local_min_grad", "min")
+        
+        
+        
+        
+        with open(self.BPA_FOLDER_DIRECTORY+"energy_profile_kcalmol.csv","w") as f:
+            f.write("ITER.,energy[kcal/mol]\n")
+            for i in range(len(self.ENERGY_LIST_FOR_PLOTTING)):
+                f.write(str(i)+","+str(self.ENERGY_LIST_FOR_PLOTTING[i] - self.ENERGY_LIST_FOR_PLOTTING[0])+"\n")
+        
+       
+        #----------------------
+        print("Complete...")
+        return
+    
+    
+    
     def main(self):
         if args.DS_AFIR:
             self.main_for_DSAFIR()
+        elif args.pyscf:
+            self.main_for_BPA_using_pyscf()
         else:
             self.main_for_BPA()
     
-        
 
 class Opt_calc_tmps:
     def __init__(self, adam_m, adam_v, adam_count, eve_d_tilde=0.0):
