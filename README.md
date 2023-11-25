@@ -14,7 +14,8 @@ About AFIR: https://afir.sci.hokudai.ac.jp/documents/manual/2
 
 ## Required Modules
 
- - psi4 v15 (Official page:https://psicode.org/   For local download:https://psicode.org/installs/v15/) 
+ - psi4 v15 (Official page:https://psicode.org/   For local download:https://psicode.org/installs/v15/)
+ - PySCF v2.4.0 (Not always necessary)
  - numpy
  - matplotlib
  - scipy
