@@ -1860,6 +1860,7 @@ class LJRepulsivePotential:
 
         a_value = 1.0
         """
+	# ref.  ACS Catal. 2022, 12, 7, 3752–3766
         # required variables: self.config["cone_potential_well_value"], 
                              self.config["cone_potential_dist_value"], 
                              self.config["cone_potential_cone_angle"],
