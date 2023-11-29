@@ -92,7 +92,7 @@ def parser():
 
     parser.add_argument("-ns", "--NSTEP",  type=int, default='300', help='iter. number')
     parser.add_argument("-core", "--N_THREAD",  type=int, default='8', help='threads')
-    parser.add_argument("-mem", "--SET_MEMORY",  type=str, default='1GB', help='use mem(ex. 1GB)')
+    parser.add_argument("-mem", "--SET_MEMORY",  type=str, default='2GB', help='use mem(ex. 1GB)')
     parser.add_argument("-d", "--DELTA",  type=str, default='x', help='move step')
 
     parser.add_argument("-ma", "--manual_AFIR", nargs="*",  type=str, default=['0.0', '1', '2'], help='manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]')
@@ -101,6 +101,7 @@ def parser():
     parser.add_argument("-rpv3", "--repulsive_potential_v3", nargs="*",  type=str, default=['0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid) (ex.) [[well_value (kJ/mol)] [dist_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
     parser.add_argument("-rpv4", "--repulsive_potential_v4", nargs="*",  type=str, default=['0.0,0.0,0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.4) (ellipsoid_2) (ex.) [[well_value_list (x,y,z) (kJ/mol)] [dist_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
     parser.add_argument("-rpv5", "--repulsive_potential_v5", nargs="*",  type=str, default=['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.5) (ellipsoid_3) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+    parser.add_argument("-cp", "--cone_potential", nargs="*",  type=str, default=['0.0','1.0','90','1', '2,3,4', '5-9'], help='Add cone type LJ repulsive_potential based on UFF (ex.) [[well_value (epsilon) (kJ/mol)] [dist (sigma) (ang.)] [cone angle (deg.)] [LJ center atom (1)] [three atoms (2,3,4) ] [target atoms (5-9)] ...]')
     
     
     parser.add_argument("-kp", "--keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1,2'], help='keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
@@ -109,8 +110,10 @@ def parser():
     parser.add_argument("-kda", "--keep_dihedral_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3,4'], help='keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] ')
     parser.add_argument("-vpp", "--void_point_pot", nargs="*",  type=str, default=['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"], help='void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] ')
    
-    parser.add_argument("-wp", "--well_pot", nargs="*", type=str, default=['0.0','1,2','0.5,0.6,1.5,1.6'], help="Add potential to limit atom distance. (ex.) [[wall energy (kJ/mol)] [atom1,atom2] [a,b,c,d (a<b<c<d) (ang.)] ...]")
-    
+    parser.add_argument("-wp", "--well_pot", nargs="*", type=str, default=['0.0','1','2','0.5,0.6,1.5,1.6'], help="Add potential to limit atom distance. (ex.) [[wall energy (kJ/mol)] [fragm.1] [fragm.2] [a,b,c,d (a<b<c<d) (ang.)] ...]")
+    parser.add_argument("-wwp", "--wall_well_pot", nargs="*", type=str, default=['0.0','x','0.5,0.6,1.5,1.6',"1"], help="Add potential to limit atoms movement. (like sandwich) (ex.) [[wall energy (kJ/mol)] [direction (x,y,z)] [a,b,c,d (a<b<c<d) (ang.)]  [target atoms (1,2,3-5)] ...]")
+    parser.add_argument("-vpwp", "--void_point_well_pot", nargs="*", type=str, default=['0.0','0.0,0.0,0.0','0.5,0.6,1.5,1.6',"1"], help="Add potential to limit atom movement. (like sphere) (ex.) [[wall energy (kJ/mol)] [coordinate (x,y,z) (ang.)] [a,b,c,d (a<b<c<d) (ang.)]  [target atoms (1,2,3-5)] ...]")
+    parser.add_argument("-awp", "--around_well_pot", nargs="*", type=str, default=['0.0','1','0.5,0.6,1.5,1.6',"2"], help="Add potential to limit atom movement. (like sphere around fragment) (ex.) [[wall energy (kJ/mol)] [center (1,2-4)] [a,b,c,d (a<b<c<d) (ang.)]  [target atoms (2,3-5)] ...]")
     
     parser.add_argument("-fix", "--fix_atoms", nargs="*",  type=str, default="", help='fix atoms (ex.) [atoms (ex.) 1,2,3-6]')
     parser.add_argument("-md", "--md_like_perturbation",  type=str, default="0.0", help='add perturbation like molecule dynamics (ex.) [[temperature (unit. K)]]')
@@ -143,6 +146,7 @@ class Interface:
         self.repulsive_potential_v3 = ['0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid) (ex.) [[well_value (kJ/mol)] [dist_scale_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
         self.repulsive_potential_v4 = ['0.0,0.0,0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid2) (ex.) [[well_value_list (x,y,z) (kJ/mol)] [dist_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
         self.repulsive_potential_v5 = ['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid3) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+        self.cone_potential = ['0.0','1.0','90','1', '2,3,4', '5-9']#'Add cone type LJ repulsive_potential based on UFF (ex.) [[well_value (epsilon) (kJ/mol)] [dist (sigma) (ang.)] [cone angle (deg.)] [LJ center atom (1)] [three atoms (2,3,4) ] [target atoms (5-9)] ...]')
         
         self.keep_pot = ['0.0', '1.0', '1,2']#keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
         self.anharmonic_keep_pot = ['0.0', '1.0', '1.0', '1,2']#Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
@@ -150,7 +154,11 @@ class Interface:
         self.keep_dihedral_angle = ['0.0', '90', '1,2,3,4']#keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] 
         self.void_point_pot = ['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"]#void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] 
 
-        self.well_pot = ['0.0','1,2','0.5,0.6,1.5,1.6']
+        self.well_pot = ['0.0','1','2','0.5,0.6,1.5,1.6']
+        self.wall_well_pot = ['0.0','x','0.5,0.6,1.5,1.6', '1']#Add potential to limit atoms movement. (sandwich) (ex.) [[wall energy (kJ/mol)] [direction (x,y,z)] [a,b,c,d (a<b<c<d) (ang.)] [target atoms (1,2,3-5)] ...]")
+        self.void_point_well_pot = ['0.0','0.0,0.0,0.0','0.5,0.6,1.5,1.6', '1']#"Add potential to limit atom movement. (sphere) (ex.) [[wall energy (kJ/mol)] [coordinate (x,y,z) (ang.)] [a,b,c,d (a<b<c<d) (ang.)] [target atoms (1,2,3-5)] ...]")
+        self.around_well_pot =['0.0','1','0.5,0.6,1.5,1.6',"2"] #Add potential to limit atom movement. (like sphere around 1 atom) (ex.) [[wall energy (kJ/mol)] [1 atom (1)] [a,b,c,d (a<b<c<d) (ang.)]  [target atoms (2,3-5)] ...]")
+        
         self.fix_atoms = ""#fix atoms (ex.) [atoms (ex.) 1,2,3-6]
         self.md_like_perturbation = "0.0"
         self.geom_info = "1"#calculate atom distances, angles, and dihedral angles in every iteration (energy_profile is also saved.) (ex.) [atoms (ex.) 1,2,3-6]
@@ -1647,7 +1655,7 @@ class LJRepulsivePotential:
         #self.save_ellipsoid_xyz_file(ell_coord_list)
         return energy
         
-    def calc_energy_v5(self, geom_num_list):#not implemented
+    def calc_energy_v5(self, geom_num_list):
         """
         # required variables: self.config["repulsive_potential_v5_well_value_list"], 
                              self.config["repulsive_potential_v5_dist_value_list"], 
@@ -1846,7 +1854,41 @@ class LJRepulsivePotential:
         self.ell_coord_list = ell_coord_list
         #self.save_ellipsoid_xyz_file(ell_coord_list)
         return energy
+    
+    
+    def calc_cone_potential_energy(self, geom_num_list):
+
+        a_value = 1.0
+        """
+        # required variables: self.config["cone_potential_well_value"], 
+                             self.config["cone_potential_dist_value"], 
+                             self.config["cone_potential_cone_angle"],
+                             self.config["cone_potential_center"], 
+                             self.config["cone_potential_three_atoms"]
+                             self.config["cone_potential_target"]   
+                             self.config["element_list"]
+        """
+        apex_vector = geom_num_list[self.config["cone_potential_center"]-1] - (2.28/self.bohr2angstroms) * ((geom_num_list[self.config["cone_potential_three_atoms"][0]-1] + geom_num_list[self.config["cone_potential_three_atoms"][1]-1] + geom_num_list[self.config["cone_potential_three_atoms"][2]-1] -3.0 * geom_num_list[self.config["cone_potential_center"]-1]) / torch.linalg.norm(geom_num_list[self.config["cone_potential_three_atoms"][0]-1] + geom_num_list[self.config["cone_potential_three_atoms"][1]-1] + geom_num_list[self.config["cone_potential_three_atoms"][2]-1] -3.0 * geom_num_list[self.config["cone_potential_center"]-1]))
+        cone_angle = torch.deg2rad(torch.tensor(self.config["cone_potential_cone_angle"], dtype=torch.float64))
+        energy = 0.0
+        for i in self.config["cone_potential_target"]:
+            UFF_VDW_well_depth = math.sqrt(self.config["cone_potential_well_value"]/self.hartree2kjmol * UFF_VDW_well_depth_lib(self.config["element_list"][i-1]))
+            UFF_VDW_distance = math.sqrt(self.config["cone_potential_dist_value"]/self.bohr2angstroms * UFF_VDW_distance_lib(self.config["element_list"][i-1]))
+            s_a_length = (geom_num_list[i-1] - apex_vector).view(1,3)
+            c_a_length = (geom_num_list[self.config["cone_potential_center"]-1] - apex_vector).view(1,3)
+            sub_angle = torch.arccos((torch.matmul(c_a_length, s_a_length.T)) / (torch.linalg.norm(c_a_length) * torch.linalg.norm(s_a_length)))#rad
+            dist = torch.linalg.norm(s_a_length)
+            
+            if sub_angle - cone_angle / 2 <= torch.pi / 2:
+                length = (dist * torch.sin(sub_angle - cone_angle / 2)).view(1,1)
+            
+            else:
+                length = dist.view(1,1)
+            
+            energy += 4 * UFF_VDW_well_depth * ((UFF_VDW_distance / (length + a_value * UFF_VDW_distance)) ** 12 - (UFF_VDW_distance / (length + a_value * UFF_VDW_distance)) ** 6)
+            
         
+        return energy
         
 class AFIRPotential:
     def __init__(self, **kwarg):
@@ -2024,10 +2066,25 @@ class WellPotential:
     def calc_energy(self, geom_num_list):
         """
         # required variables: self.config["well_pot_wall_energy"]
-                              self.config["well_pot_atom_pair"]
+                              self.config["well_pot_fragm_1"]
+                              self.config["well_pot_fragm_2"]
                               self.config["well_pot_limit_dist"]
+                              
+                              
         """
-        vec_norm = torch.linalg.norm(geom_num_list[self.config["well_pot_atom_pair"][0]-1] - geom_num_list[self.config["well_pot_atom_pair"][1]-1]) 
+        fragm_1_center = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float64, requires_grad=True)
+        for i in self.config["well_pot_fragm_1"]:
+            fragm_1_center = fragm_1_center + geom_num_list[i-1]
+        
+        fragm_1_center = fragm_1_center / len(self.config["well_pot_fragm_1"])
+        
+        fragm_2_center = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float64, requires_grad=True)
+        for i in self.config["well_pot_fragm_2"]:
+            fragm_2_center = fragm_2_center + geom_num_list[i-1]
+        
+        fragm_2_center = fragm_2_center / len(self.config["well_pot_fragm_2"])        
+        
+        vec_norm = torch.linalg.norm(fragm_1_center - fragm_2_center) 
         a = float(self.config["well_pot_limit_dist"][0]) / self.bohr2angstroms
         b = float(self.config["well_pot_limit_dist"][1]) / self.bohr2angstroms
         c = float(self.config["well_pot_limit_dist"][2]) / self.bohr2angstroms
@@ -2060,7 +2117,206 @@ class WellPotential:
             raise "well pot error"
         #print(energy)
         return energy
+        
+    def calc_energy_wall(self, geom_num_list):
+        """
+        # required variables: self.config["wall_well_pot_wall_energy"]
+                              self.config["wall_well_pot_direction"] 
+                              self.config["wall_well_pot_limit_dist"]
+                              self.config["wall_well_pot_target"]
+                              
+                              
+        """
+        
+        if self.config["wall_well_pot_direction"] == "x":
+            direction_num = 0
+        elif self.config["wall_well_pot_direction"] == "y":
+            direction_num = 1
+        elif self.config["wall_well_pot_direction"] == "z":
+            direction_num = 2
+                     
+        
+        
+        energy = 0.0
+        for i in self.config["wall_well_pot_target"]:
 
+            vec_norm = abs(torch.linalg.norm(geom_num_list[i-1][direction_num])) 
+                     
+            a = float(self.config["wall_well_pot_limit_dist"][0]) / self.bohr2angstroms
+            b = float(self.config["wall_well_pot_limit_dist"][1]) / self.bohr2angstroms
+            c = float(self.config["wall_well_pot_limit_dist"][2]) / self.bohr2angstroms
+            d = float(self.config["wall_well_pot_limit_dist"][3]) / self.bohr2angstroms
+            short_dist_linear_func_slope = 0.5 / (b - a)
+            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+            long_dist_linear_func_slope = 0.5 / (c - d)
+            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
+
+            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+
+            if vec_norm <= a:
+                energy += (self.config["wall_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_short + 2.875)
+                
+            elif a < vec_norm and vec_norm <= b:
+                energy += (self.config["wall_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5)
+                    
+            elif b < vec_norm and vec_norm < c:
+                energy += torch.tensor(0.0, requires_grad=True, dtype=torch.float64)
+                
+            elif c <= vec_norm and vec_norm < d:
+                energy += (self.config["wall_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5)
+                
+            elif d <= vec_norm:
+                energy += (self.config["wall_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_long + 2.875)
+                
+            else:
+                print("well pot error")
+                raise "well pot error"
+                
+ 
+        #print(energy)
+        return energy
+        
+    def calc_energy_vp(self, geom_num_list):
+        """
+        # required variables: self.config["void_point_well_pot_wall_energy"]
+                              self.config["void_point_well_pot_coordinate"] 
+                              self.config["void_point_well_pot_limit_dist"]
+                              self.config["void_point_well_pot_target"]
+                              
+                              
+        """
+        self.config["void_point_well_pot_coordinate"]  = torch.tensor(self.config["void_point_well_pot_coordinate"], dtype=torch.float64)
+        """
+        vec_norm = torch.tensor([[]], dtype=torch.float64, requires_grad=True)
+
+        vecs = geom_num_list - self.config["void_point_well_pot_coordinate"]
+        for j in range(len(vecs)):
+            if j+1 in self.config["void_point_well_pot_target"]:
+               
+                vec_norm = torch.cat([vec_norm, torch.linalg.norm(vecs[j])], dim=1)
+            else:
+                vec_norm = torch.cat([vec_norm, float('nan')], dim=1)
+        print(vec_norm)
+        
+       
+        a = float(self.config["void_point_well_pot_limit_dist"][0]) / self.bohr2angstroms
+        b = float(self.config["void_point_well_pot_limit_dist"][1]) / self.bohr2angstroms
+        c = float(self.config["void_point_well_pot_limit_dist"][2]) / self.bohr2angstroms
+        d = float(self.config["void_point_well_pot_limit_dist"][3]) / self.bohr2angstroms
+        short_dist_linear_func_slope = 0.5 / (b - a)
+        short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+        long_dist_linear_func_slope = 0.5 / (c - d)
+        long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
+
+        x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+        x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+            
+        energy_a = torch.where(vec_norm <= a, (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_short + 2.875), float('nan')).nansum()
+        energy_a_b = torch.where((a < vec_norm) & (vec_norm <= b), (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5), float('nan')).nansum()
+        energy_b_c = torch.where((b < vec_norm) & (vec_norm < c), 0.0, float('nan')).nansum()
+        energy_c_d = torch.where((c <= vec_norm) & (vec_norm < d), (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5), float('nan')).nansum()
+        energy_d = torch.where(d <= vec_norm, (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_long + 2.875), float('nan')).nansum()
+        #print(energy_a, energy_a_b, energy_b_c, energy_c_d, energy_d)
+
+        sum_energy = energy_a + energy_a_b + energy_b_c + energy_c_d + energy_d   
+        #print(sum_energy)
+        """
+        
+        energy = 0.0
+        for i in self.config["void_point_well_pot_target"]:
+
+            vec_norm = torch.linalg.norm(geom_num_list[i-1] - self.config["void_point_well_pot_coordinate"]) 
+                     
+            a = float(self.config["void_point_well_pot_limit_dist"][0]) / self.bohr2angstroms
+            b = float(self.config["void_point_well_pot_limit_dist"][1]) / self.bohr2angstroms
+            c = float(self.config["void_point_well_pot_limit_dist"][2]) / self.bohr2angstroms
+            d = float(self.config["void_point_well_pot_limit_dist"][3]) / self.bohr2angstroms
+            short_dist_linear_func_slope = 0.5 / (b - a)
+            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+            long_dist_linear_func_slope = 0.5 / (c - d)
+            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
+
+            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+
+            if vec_norm <= a:
+                energy += (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_short + 2.875)
+                
+            elif a < vec_norm and vec_norm <= b:
+                energy += (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5)
+                    
+            elif b < vec_norm and vec_norm < c:
+                energy += torch.tensor(0.0, requires_grad=True, dtype=torch.float64)
+                
+            elif c <= vec_norm and vec_norm < d:
+                energy += (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5)
+                
+            elif d <= vec_norm:
+                energy += (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_long + 2.875)
+                
+            else:
+                print("well pot error")
+                raise "well pot error"
+                
+ 
+        #print(energy)
+        return energy
+        
+    def calc_energy_around(self, geom_num_list):
+        """
+        # required variables: self.config["around_well_pot_wall_energy"]
+                              self.config["around_well_pot_center"] 
+                              self.config["around_well_pot_limit_dist"]
+                              self.config["around_well_pot_target"]
+                              
+                              
+        """
+        geom_center_coord = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float64, requires_grad=True)
+        for i in self.config["around_well_pot_center"]:
+            geom_center_coord = geom_center_coord + geom_num_list[i-1]
+        geom_center_coord = geom_center_coord/len(self.config["around_well_pot_center"])
+        energy = 0.0
+        for i in self.config["around_well_pot_target"]:
+
+            vec_norm = torch.linalg.norm(geom_num_list[i-1] - geom_center_coord) 
+                     
+            a = float(self.config["around_well_pot_limit_dist"][0]) / self.bohr2angstroms
+            b = float(self.config["around_well_pot_limit_dist"][1]) / self.bohr2angstroms
+            c = float(self.config["around_well_pot_limit_dist"][2]) / self.bohr2angstroms
+            d = float(self.config["around_well_pot_limit_dist"][3]) / self.bohr2angstroms
+            short_dist_linear_func_slope = 0.5 / (b - a)
+            short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
+            long_dist_linear_func_slope = 0.5 / (c - d)
+            long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
+
+            x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
+            x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
+
+            if vec_norm <= a:
+                energy += (self.config["around_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_short + 2.875)
+                
+            elif a < vec_norm and vec_norm <= b:
+                energy += (self.config["around_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5)
+                    
+            elif b < vec_norm and vec_norm < c:
+                energy += torch.tensor(0.0, requires_grad=True, dtype=torch.float64)
+                
+            elif c <= vec_norm and vec_norm < d:
+                energy += (self.config["around_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5)
+                
+            elif d <= vec_norm:
+                energy += (self.config["around_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_long + 2.875)
+                
+            else:
+                print("well pot error")
+                raise "well pot error"
+                
+ 
+        #print(energy)
+        return energy
+        
+        
 class DSAFIRPotential:
     def __init__(self, **kwarg):
         self.config = kwarg
@@ -2314,6 +2570,31 @@ class BiasPotentialCalculation:
                 
                 BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
                 LJRP.save_ellipsoid_xyz_file(LJRP.ell_coord_list)
+                
+        #------------------
+        for i in range(len(force_data["cone_potential_well_value"])):
+            if force_data["cone_potential_well_value"][i] != 0.0:
+              
+                LJRP = LJRepulsivePotential(cone_potential_well_value=force_data["cone_potential_well_value"][i], 
+                                            cone_potential_dist_value=force_data["cone_potential_dist_value"][i], 
+                                            cone_potential_cone_angle=force_data["cone_potential_cone_angle"][i],
+                                            cone_potential_center=force_data["cone_potential_center"][i],
+                                            cone_potential_three_atoms=force_data["cone_potential_three_atoms"][i],
+                                            cone_potential_target=force_data["cone_potential_target"][i],
+                                            element_list=element_list
+                                            )
+
+                B_e += LJRP.calc_cone_potential_energy(geom_num_list)
+                tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_cone_potential_energy)(geom_num_list).view(len(geom_num_list), 3)
+                
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                tensor_BPA_hessian = torch.func.hessian(LJRP.calc_cone_potential_energy)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+                
+       
         #------------------
         
         for i in range(len(force_data["keep_pot_spring_const"])):
@@ -2361,8 +2642,10 @@ class BiasPotentialCalculation:
         for i in range(len(force_data["well_pot_wall_energy"])):
             if force_data["well_pot_wall_energy"][i] != 0.0:
                 WP = WellPotential(well_pot_wall_energy=force_data["well_pot_wall_energy"][i], 
-                                            well_pot_atom_pair=force_data["well_pot_atom_pair"][i], 
+                                            well_pot_fragm_1=force_data["well_pot_fragm_1"][i], 
+                                            well_pot_fragm_2=force_data["well_pot_fragm_2"][i], 
                                             well_pot_limit_dist=force_data["well_pot_limit_dist"][i])
+                
                 
                 B_e += WP.calc_energy(geom_num_list)
                 
@@ -2374,8 +2657,75 @@ class BiasPotentialCalculation:
                 BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
             else:
                 pass
+        #------------------
+        
 
-        #------------------        
+        #print("wp")
+        for i in range(len(force_data["wall_well_pot_wall_energy"])):
+            if force_data["wall_well_pot_wall_energy"][i] != 0.0:
+                WP = WellPotential(wall_well_pot_wall_energy=force_data["wall_well_pot_wall_energy"][i],
+                                            wall_well_pot_direction=force_data["wall_well_pot_direction"][i], 
+                                            wall_well_pot_limit_dist=force_data["wall_well_pot_limit_dist"][i],
+                                            wall_well_pot_target=force_data["wall_well_pot_target"][i])
+                
+                B_e += WP.calc_energy_wall(geom_num_list)
+                
+                tensor_BPA_grad = torch.func.jacfwd(WP.calc_energy_wall)(geom_num_list)
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                tensor_BPA_hessian = torch.func.hessian(WP.calc_energy_wall)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+            else:
+                pass
+        #------------------
+        
+
+        #print("wp")
+        for i in range(len(force_data["void_point_well_pot_wall_energy"])):
+            if force_data["void_point_well_pot_wall_energy"][i] != 0.0:
+                WP = WellPotential(void_point_well_pot_wall_energy=force_data["void_point_well_pot_wall_energy"][i], 
+                                            void_point_well_pot_coordinate=force_data["void_point_well_pot_coordinate"][i], 
+                                            void_point_well_pot_limit_dist=force_data["void_point_well_pot_limit_dist"][i],
+                                            void_point_well_pot_target=force_data["void_point_well_pot_target"][i])
+                
+                B_e += WP.calc_energy_vp(geom_num_list)
+                
+                tensor_BPA_grad = torch.func.jacfwd(WP.calc_energy_vp)(geom_num_list)
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                tensor_BPA_hessian = torch.func.hessian(WP.calc_energy_vp)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+                
+            else:
+                pass
+                
+            
+        #------------------    
+
+        for i in range(len(force_data["around_well_pot_wall_energy"])):
+            if force_data["around_well_pot_wall_energy"][i] != 0.0:
+                WP = WellPotential(around_well_pot_wall_energy=force_data["around_well_pot_wall_energy"][i], 
+                                            around_well_pot_center=force_data["around_well_pot_center"][i], 
+                                            around_well_pot_limit_dist=force_data["around_well_pot_limit_dist"][i],
+                                            around_well_pot_target=force_data["around_well_pot_target"][i])
+                
+                B_e += WP.calc_energy_around(geom_num_list)
+                
+                tensor_BPA_grad = torch.func.jacfwd(WP.calc_energy_around)(geom_num_list)
+                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                tensor_BPA_hessian = torch.func.hessian(WP.calc_energy_around)(geom_num_list)
+                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+                
+            else:
+                pass
+                
+            
+        #------------------   
+        
         if len(geom_num_list) > 2:
             for i in range(len(force_data["keep_angle_spring_const"])):
                 if force_data["keep_angle_spring_const"][i] != 0.0:
@@ -2462,10 +2812,10 @@ class BiasPotentialCalculation:
 
         
         
-        B_e = B_e.detach().float()
+        B_e = B_e.item()
         #new_geometry:ang. 
         #B_e:hartree
-        
+
         return BPA_grad_list, B_e, B_g, BPA_hessian
         
     def calc_DSAFIRPotential(self, q_e, q_g, q_geom_num_list, p_geom_num_list, initial_q_geom_num_list):#calclate bais optential for DS_AFIR
@@ -2621,11 +2971,11 @@ class FileIO:
             with open(file,"r") as f:
                 sample = f.readlines()
                 with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w:
-                    atom_num = len(sample)-1
+                    atom_num = len(sample)-2
                     w.write(str(atom_num)+"\n")
                     w.write("Frame "+str(m)+"\n")
                 
-                for i in sample:
+                for i in sample[2:]:
                     with open(self.BPA_FOLDER_DIRECTORY+self.START_FILE[:-4]+"_collection.xyz","a") as w2:
                         w2.write(i)
         print("\ngeometry collection is completed...\n")
@@ -3197,9 +3547,9 @@ class BiasPotentialAddtion:
                                   verbose=3)
                 if self.FUNCTIONAL == "hf" or self.FUNCTIONAL == "HF":
                     if int(self.spin_multiplicity) > 0:
-                        mf = mol.UHF().x2c()
+                        mf = mol.UHF().x2c().density_fit()
                     else:
-                        mf = mol.RHF()
+                        mf = mol.RHF().density_fit()
                 else:
                     if int(self.spin_multiplicity) > 1:
                         mf = mol.UKS().x2c().density_fit()
@@ -3429,6 +3779,34 @@ class BiasPotentialAddtion:
                 print("invaild input (-rpv5 center)")
                 sys.exit(0)  
         #---------------------
+        
+        if len(args.cone_potential) % 6 != 0:
+            print("invaild input (-cp)")
+            sys.exit(0)
+        
+        force_data["cone_potential_well_value"] = []
+        force_data["cone_potential_dist_value"] = []
+        force_data["cone_potential_cone_angle"] = []
+        force_data["cone_potential_center"] = []
+        force_data["cone_potential_three_atoms"] = []
+        force_data["cone_potential_target"] = []
+ 
+        for i in range(int(len(args.cone_potential)/6)):
+            force_data["cone_potential_well_value"].append(float(args.cone_potential[6*i+0]))
+            force_data["cone_potential_dist_value"].append(float(args.cone_potential[6*i+1]))
+            force_data["cone_potential_cone_angle"].append(float(args.cone_potential[6*i+2]))
+            force_data["cone_potential_center"].append(int(args.cone_potential[6*i+3]))
+            force_data["cone_potential_three_atoms"].append(num_parse(args.cone_potential[6*i+4]))
+            force_data["cone_potential_target"].append(num_parse(args.cone_potential[6*i+5]))
+
+            if len(force_data["cone_potential_three_atoms"][i]) != 3:
+                print("invaild input (-cp three atoms)")
+                sys.exit(0)               
+                             
+        
+        
+        
+        #--------------------
         if len(args.manual_AFIR) % 3 != 0:
             print("invaild input (-ma)")
             sys.exit(0)
@@ -3514,23 +3892,20 @@ class BiasPotentialAddtion:
                 sys.exit(0)
         
         #---------------------
-        if len(args.well_pot) % 3 != 0:
+        if len(args.well_pot) % 4 != 0:
             print("invaild input (-wp)")
             sys.exit(0)
             
         force_data["well_pot_wall_energy"] = []
-        force_data["well_pot_atom_pair"] = []
+        force_data["well_pot_fragm_1"] = []
+        force_data["well_pot_fragm_2"] = []
         force_data["well_pot_limit_dist"] = []
         
-        for i in range(int(len(args.well_pot)/3)):
-            force_data["well_pot_wall_energy"].append(float(args.well_pot[3*i]))#kJ/mol
-            force_data["well_pot_atom_pair"].append(num_parse(args.well_pot[3*i+1]))
-            
-            if len(force_data["well_pot_atom_pair"][i]) != 2:
-                print("invaild input (-wp atom_pairs)")
-                sys.exit(0)
-            
-            force_data["well_pot_limit_dist"].append(args.well_pot[3*i+2].split(","))#ang
+        for i in range(int(len(args.well_pot)/4)):
+            force_data["well_pot_wall_energy"].append(float(args.well_pot[4*i]))#kJ/mol
+            force_data["well_pot_fragm_1"].append(num_parse(args.well_pot[4*i+1]))
+            force_data["well_pot_fragm_2"].append(num_parse(args.well_pot[4*i+2]))
+            force_data["well_pot_limit_dist"].append(args.well_pot[4*i+3].split(","))#ang
             if float(force_data["well_pot_limit_dist"][i][0]) < float(force_data["well_pot_limit_dist"][i][1]) and float(force_data["well_pot_limit_dist"][i][1]) < float(force_data["well_pot_limit_dist"][i][2]) and float(force_data["well_pot_limit_dist"][i][2]) < float(force_data["well_pot_limit_dist"][i][3]):
                 pass
             else:
@@ -3538,6 +3913,92 @@ class BiasPotentialAddtion:
                 sys.exit(0)
                 
         #---------------------
+        if len(args.wall_well_pot) % 4 != 0:
+            print("invaild input (-wwp)")
+            sys.exit(0)
+            
+        force_data["wall_well_pot_wall_energy"] = []
+        force_data["wall_well_pot_direction"] = []
+        force_data["wall_well_pot_limit_dist"] = []
+        force_data["wall_well_pot_target"] = []
+        
+        for i in range(int(len(args.wall_well_pot)/4)):
+            force_data["wall_well_pot_wall_energy"].append(float(args.wall_well_pot[4*i]))#kJ/mol
+            force_data["wall_well_pot_direction"].append(args.wall_well_pot[4*i+1])
+            
+            if force_data["wall_well_pot_direction"][i] == "x" or force_data["wall_well_pot_direction"][i] == "y" or force_data["wall_well_pot_direction"][i] == "z":
+                pass
+            else:
+                print("invaild input (-wwp direction)")
+                sys.exit(0)
+            
+            force_data["wall_well_pot_limit_dist"].append(args.wall_well_pot[4*i+2].split(","))#ang
+            if float(force_data["wall_well_pot_limit_dist"][i][0]) < float(force_data["wall_well_pot_limit_dist"][i][1]) and float(force_data["wall_well_pot_limit_dist"][i][1]) < float(force_data["wall_well_pot_limit_dist"][i][2]) and float(force_data["wall_well_pot_limit_dist"][i][2]) < float(force_data["wall_well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-wwp a<b<c<d)")
+                sys.exit(0)
+            
+            force_data["wall_well_pot_target"].append(num_parse(args.wall_well_pot[4*i+3]))
+        #---------------------
+        
+        if len(args.void_point_well_pot) % 4 != 0:
+            print("invaild input (-vpwp)")
+            sys.exit(0)
+            
+        force_data["void_point_well_pot_wall_energy"] = []
+        force_data["void_point_well_pot_coordinate"] = []
+        force_data["void_point_well_pot_limit_dist"] = []
+        force_data["void_point_well_pot_target"] = []
+        
+        for i in range(int(len(args.void_point_well_pot)/4)):
+            force_data["void_point_well_pot_wall_energy"].append(float(args.void_point_well_pot[4*i]))#kJ/mol
+            
+            
+            force_data["void_point_well_pot_coordinate"].append(list(map(float, args.void_point_well_pot[4*i+1].split(","))))
+            
+            if len(force_data["void_point_well_pot_coordinate"][i]) != 3:
+                print("invaild input (-vpwp coordinate)")
+                sys.exit(0)
+            
+            force_data["void_point_well_pot_limit_dist"].append(args.void_point_well_pot[4*i+2].split(","))#ang
+            if float(force_data["void_point_well_pot_limit_dist"][i][0]) < float(force_data["void_point_well_pot_limit_dist"][i][1]) and float(force_data["void_point_well_pot_limit_dist"][i][1]) < float(force_data["void_point_well_pot_limit_dist"][i][2]) and float(force_data["void_point_well_pot_limit_dist"][i][2]) < float(force_data["void_point_well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-vpwp a<b<c<d)")
+                sys.exit(0)
+                
+            force_data["void_point_well_pot_target"].append(num_parse(args.void_point_well_pot[4*i+3]))
+            
+        #---------------------
+        
+        if len(args.around_well_pot) % 4 != 0:
+            print("invaild input (-awp)")
+            sys.exit(0)
+            
+        force_data["around_well_pot_wall_energy"] = []
+        force_data["around_well_pot_center"] = []
+        force_data["around_well_pot_limit_dist"] = []
+        force_data["around_well_pot_target"] = []
+        
+        for i in range(int(len(args.around_well_pot)/4)):
+            force_data["around_well_pot_wall_energy"].append(float(args.around_well_pot[4*i]))#kJ/mol
+            
+            
+            force_data["around_well_pot_center"].append(num_parse(args.around_well_pot[4*i+1]))
+            
+            
+            force_data["around_well_pot_limit_dist"].append(args.around_well_pot[4*i+2].split(","))#ang
+            if float(force_data["around_well_pot_limit_dist"][i][0]) < float(force_data["around_well_pot_limit_dist"][i][1]) and float(force_data["around_well_pot_limit_dist"][i][1]) < float(force_data["around_well_pot_limit_dist"][i][2]) and float(force_data["around_well_pot_limit_dist"][i][2]) < float(force_data["around_well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-vpwp a<b<c<d)")
+                sys.exit(0)
+                
+            force_data["around_well_pot_target"].append(num_parse(args.around_well_pot[4*i+3]))
+            
+        #---------------------
+        
         if len(args.void_point_pot) % 5 != 0:
             print("invaild input (-vpp)")
             sys.exit(0)
