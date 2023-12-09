@@ -126,8 +126,8 @@ def parser():
     parser.add_argument("-xtb", "--usextb",  type=str, default="None", help='use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB ')
     parser.add_argument('-dsafir','--DS_AFIR', help="use DS-AFIR method.", action='store_true')
     parser.add_argument('-pyscf','--pyscf', help="use pyscf module.", action='store_true')
-    parser.add_argument("-elec", "--electronic_charge", nargs="*",  type=int, default=0, help='formal electronic charge (ex.) [charge (0)]')
-    parser.add_argument("-spin", "--spin_multiplicity", nargs="*",  type=int, default=1, help='spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
+    parser.add_argument("-elec", "--electronic_charge", type=int, default=0, help='formal electronic charge (ex.) [charge (0)]')
+    parser.add_argument("-spin", "--spin_multiplicity", type=int, default=1, help='spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
     args = parser.parse_args()
     return args
 
