@@ -127,7 +127,7 @@ def parser():
     parser.add_argument('-dsafir','--DS_AFIR', help="use DS-AFIR method.", action='store_true')
     parser.add_argument('-pyscf','--pyscf', help="use pyscf module.", action='store_true')
     parser.add_argument("-elec", "--electronic_charge", type=int, default=0, help='formal electronic charge (ex.) [charge (0)]')
-    parser.add_argument("-spin", "--spin_multiplicity", type=int, default=1, help='spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
+    parser.add_argument("-spin", "--spin_multiplicity", type=int, default=0, help='spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
     args = parser.parse_args()
     return args
 
@@ -171,7 +171,7 @@ class Interface:
         self.DS_AFIR = False
         self.pyscf = False
         self.electronic_charge = 0
-        self.spin_multiplicity = 1#'spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]'
+        self.spin_multiplicity = 0#'spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]'
         return
         
     def force_data_parser(self, args):
