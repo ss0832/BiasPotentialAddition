@@ -15,19 +15,13 @@ from scipy.signal import argrelextrema
 import matplotlib.pyplot as plt
 import numpy as np
 
-try:
-    import torch
-    
-except:
-    print("please install pytorch. (pip install torch)")
-    sys.exit(1)
 
 try:
     import pyscf
     from pyscf.hessian import thermo
 except:
     print("You can't use pyscf.")
-try:
+try:#Unless you import tblite before pytorch, tblite doesnt work well. 
     from tblite.interface import Calculator
 except:
     print("You can't use extended tight binding method.")
@@ -35,6 +29,15 @@ try:
     import psi4
 except:
     print("You can't use psi4.")
+
+try:
+    import torch
+    
+except:
+    print("please install pytorch. (pip install torch)")
+    sys.exit(1)
+
+
 
 
 """
@@ -123,13 +126,13 @@ def parser():
     parser.add_argument("-xtb", "--usextb",  type=str, default="None", help='use extended tight bonding method to calculate. default is not using extended tight binding method (ex.) GFN1-xTB, GFN2-xTB ')
     parser.add_argument('-dsafir','--DS_AFIR', help="use DS-AFIR method.", action='store_true')
     parser.add_argument('-pyscf','--pyscf', help="use pyscf module.", action='store_true')
-    parser.add_argument("-elec", "--electronic_charge", nargs="*",  type=int, default=0, help='formal electronic charge ( for pyscf ) (ex.) [charge (0)]')
-    parser.add_argument("-spin", "--spin_multiplicity", nargs="*",  type=int, default=0, help='spin multiplcity ( for pyscf ) (please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
+    parser.add_argument("-elec", "--electronic_charge", nargs="*",  type=int, default=0, help='formal electronic charge (ex.) [charge (0)]')
+    parser.add_argument("-spin", "--spin_multiplicity", nargs="*",  type=int, default=1, help='spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
     args = parser.parse_args()
     return args
 
 class Interface:
-    def __init__(self, input_file):
+    def __init__(self, input_file=""):
         self.INPUT = input_file
         self.basisset = '6-31G(d)'#basisset (ex. 6-31G*)
         self.functional = 'b3lyp'#functional(ex. b3lyp)
@@ -168,8 +171,392 @@ class Interface:
         self.DS_AFIR = False
         self.pyscf = False
         self.electronic_charge = 0
-        self.spin_multiplicity = 0
+        self.spin_multiplicity = 1#'spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]'
         return
+        
+    def force_data_parser(self, args):
+        def num_parse(numbers):
+            sub_list = []
+            
+            sub_tmp_list = numbers.split(",")
+            for sub in sub_tmp_list:                        
+                if "-" in sub:
+                    for j in range(int(sub.split("-")[0]),int(sub.split("-")[1])+1):
+                        sub_list.append(j)
+                else:
+                    sub_list.append(int(sub))    
+            return sub_list
+        force_data = {}
+        #---------------------
+        if len(args.repulsive_potential) % 5 != 0:
+            print("invaild input (-rp)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_well_scale"] = []
+        force_data["repulsive_potential_dist_scale"] = []
+        force_data["repulsive_potential_Fragm_1"] = []
+        force_data["repulsive_potential_Fragm_2"] = []
+        force_data["repulsive_potential_unit"] = []
+        
+        for i in range(int(len(args.repulsive_potential)/5)):
+            force_data["repulsive_potential_well_scale"].append(float(args.repulsive_potential[5*i]))
+            force_data["repulsive_potential_dist_scale"].append(float(args.repulsive_potential[5*i+1]))
+            force_data["repulsive_potential_Fragm_1"].append(num_parse(args.repulsive_potential[5*i+2]))
+            force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[5*i+3]))
+            force_data["repulsive_potential_unit"].append(str(args.repulsive_potential[5*i+4]))
+        
+
+        #---------------------
+        if len(args.repulsive_potential_v2) % 10 != 0:
+            print("invaild input (-rpv2)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_v2_well_scale"] = []
+        force_data["repulsive_potential_v2_dist_scale"] = []
+        force_data["repulsive_potential_v2_length"] = []
+        force_data["repulsive_potential_v2_const_rep"] = []
+        force_data["repulsive_potential_v2_const_attr"] = []
+        force_data["repulsive_potential_v2_order_rep"] = []
+        force_data["repulsive_potential_v2_order_attr"] = []
+        force_data["repulsive_potential_v2_center"] = []
+        force_data["repulsive_potential_v2_target"] = []
+        force_data["repulsive_potential_v2_unit"] = []
+        
+        for i in range(int(len(args.repulsive_potential_v2)/10)):
+            force_data["repulsive_potential_v2_well_scale"].append(float(args.repulsive_potential_v2[10*i+0]))
+            force_data["repulsive_potential_v2_dist_scale"].append(float(args.repulsive_potential_v2[10*i+1]))
+            force_data["repulsive_potential_v2_length"].append(float(args.repulsive_potential_v2[10*i+2]))
+            force_data["repulsive_potential_v2_const_rep"].append(float(args.repulsive_potential_v2[10*i+3]))
+            force_data["repulsive_potential_v2_const_attr"].append(float(args.repulsive_potential_v2[10*i+4]))
+            force_data["repulsive_potential_v2_order_rep"].append(float(args.repulsive_potential_v2[10*i+5]))
+            force_data["repulsive_potential_v2_order_attr"].append(float(args.repulsive_potential_v2[10*i+6]))
+            force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[10*i+7]))
+            force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[10*i+8]))
+            force_data["repulsive_potential_v2_unit"].append(str(args.repulsive_potential_v2[10*i+9]))
+            if len(force_data["repulsive_potential_v2_center"][i]) != 2:
+                print("invaild input (-rpv2 center)")
+                sys.exit(0)
+        #---------------------
+        if len(args.repulsive_potential_v3) % 6 != 0:
+            print("invaild input (-rpv3)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_v3_well_value"] = []
+        force_data["repulsive_potential_v3_dist_value_list"] = []
+        force_data["repulsive_potential_v3_length"] = []
+        force_data["repulsive_potential_v3_order"] = []
+        force_data["repulsive_potential_v3_center"] = []
+        force_data["repulsive_potential_v3_target"] = []
+        force_data["repulsive_potential_v3_theta_list"] = []#unit: rad.
+        for i in range(int(len(args.repulsive_potential_v3)/6)):
+            force_data["repulsive_potential_v3_well_value"].append(float(args.repulsive_potential_v3[6*i+0]))
+            force_data["repulsive_potential_v3_dist_value_list"].append(list(map(float, args.repulsive_potential_v3[6*i+1].split(","))))
+            force_data["repulsive_potential_v3_length"].append(float(args.repulsive_potential_v3[6*i+2]))
+            force_data["repulsive_potential_v3_order"].append(float(args.repulsive_potential_v3[6*i+3]))
+            force_data["repulsive_potential_v3_center"].append(num_parse(args.repulsive_potential_v3[6*i+4]))
+            force_data["repulsive_potential_v3_target"].append(num_parse(args.repulsive_potential_v3[6*i+5]))
+            force_data["repulsive_potential_v3_theta_list"].append(0.0)
+            if len(force_data["repulsive_potential_v3_center"][i]) != 2:
+                print("invaild input (-rpv3 center)")
+                sys.exit(0)  
+        #---------------------
+        if len(args.repulsive_potential_v4) % 6 != 0:
+            print("invaild input (-rpv4)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_v4_well_value_list"] = []
+        force_data["repulsive_potential_v4_dist_value_list"] = []
+        force_data["repulsive_potential_v4_length"] = []
+        force_data["repulsive_potential_v4_order"] = []
+        force_data["repulsive_potential_v4_center"] = []
+        force_data["repulsive_potential_v4_target"] = []
+        force_data["repulsive_potential_v4_theta_list"] = []#unit: rad.
+        for i in range(int(len(args.repulsive_potential_v4)/6)):
+            force_data["repulsive_potential_v4_well_value_list"].append(list(map(float, args.repulsive_potential_v4[6*i+0].split(","))))
+            force_data["repulsive_potential_v4_dist_value_list"].append(list(map(float, args.repulsive_potential_v4[6*i+1].split(","))))
+            force_data["repulsive_potential_v4_length"].append(float(args.repulsive_potential_v4[6*i+2]))
+            force_data["repulsive_potential_v4_order"].append(float(args.repulsive_potential_v4[6*i+3]))
+            force_data["repulsive_potential_v4_center"].append(num_parse(args.repulsive_potential_v4[6*i+4]))
+            force_data["repulsive_potential_v4_target"].append(num_parse(args.repulsive_potential_v4[6*i+5]))
+            force_data["repulsive_potential_v4_theta_list"].append(0.0)
+            if len(force_data["repulsive_potential_v4_center"][i]) != 2:
+                print("invaild input (-rpv4 center)")
+                sys.exit(0)  
+        #---------------------
+        if len(args.repulsive_potential_v5) % 6 != 0:
+            print("invaild input (-rpv5)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_v5_well_value_list"] = []
+        force_data["repulsive_potential_v5_dist_value_list"] = []
+        force_data["repulsive_potential_v5_length"] = []
+        force_data["repulsive_potential_v5_order"] = []
+        force_data["repulsive_potential_v5_center"] = []
+        force_data["repulsive_potential_v5_target"] = []
+        force_data["repulsive_potential_v5_theta_list"] = []#unit: rad.
+        for i in range(int(len(args.repulsive_potential_v5)/6)):
+            force_data["repulsive_potential_v5_well_value_list"].append(list(map(float, args.repulsive_potential_v5[6*i+0].split(","))))
+            force_data["repulsive_potential_v5_dist_value_list"].append(list(map(float, args.repulsive_potential_v5[6*i+1].split(","))))
+            force_data["repulsive_potential_v5_length"].append(float(args.repulsive_potential_v5[6*i+2]))
+            force_data["repulsive_potential_v5_order"].append(float(args.repulsive_potential_v5[6*i+3]))
+            force_data["repulsive_potential_v5_center"].append(num_parse(args.repulsive_potential_v5[6*i+4]))
+            force_data["repulsive_potential_v5_target"].append(num_parse(args.repulsive_potential_v5[6*i+5]))
+            force_data["repulsive_potential_v5_theta_list"].append(0.0)
+            if len(force_data["repulsive_potential_v5_center"][i]) != 2:
+                print("invaild input (-rpv5 center)")
+                sys.exit(0)  
+        #---------------------
+        
+        if len(args.cone_potential) % 6 != 0:
+            print("invaild input (-cp)")
+            sys.exit(0)
+        
+        force_data["cone_potential_well_value"] = []
+        force_data["cone_potential_dist_value"] = []
+        force_data["cone_potential_cone_angle"] = []
+        force_data["cone_potential_center"] = []
+        force_data["cone_potential_three_atoms"] = []
+        force_data["cone_potential_target"] = []
+ 
+        for i in range(int(len(args.cone_potential)/6)):
+            force_data["cone_potential_well_value"].append(float(args.cone_potential[6*i+0]))
+            force_data["cone_potential_dist_value"].append(float(args.cone_potential[6*i+1]))
+            force_data["cone_potential_cone_angle"].append(float(args.cone_potential[6*i+2]))
+            force_data["cone_potential_center"].append(int(args.cone_potential[6*i+3]))
+            force_data["cone_potential_three_atoms"].append(num_parse(args.cone_potential[6*i+4]))
+            force_data["cone_potential_target"].append(num_parse(args.cone_potential[6*i+5]))
+
+            if len(force_data["cone_potential_three_atoms"][i]) != 3:
+                print("invaild input (-cp three atoms)")
+                sys.exit(0)               
+                             
+        
+        #--------------------
+        if len(args.manual_AFIR) % 3 != 0:
+            print("invaild input (-ma)")
+            sys.exit(0)
+        
+        force_data["AFIR_gamma"] = []
+        force_data["AFIR_Fragm_1"] = []
+        force_data["AFIR_Fragm_2"] = []
+        
+
+        for i in range(int(len(args.manual_AFIR)/3)):
+            force_data["AFIR_gamma"].append(float(args.manual_AFIR[3*i]))#kj/mol
+            force_data["AFIR_Fragm_1"].append(num_parse(args.manual_AFIR[3*i+1]))
+            force_data["AFIR_Fragm_2"].append(num_parse(args.manual_AFIR[3*i+2]))
+        
+        
+        #---------------------
+        if len(args.anharmonic_keep_pot) % 4 != 0:
+            print("invaild input (-akp)")
+            sys.exit(0)
+        
+        force_data["anharmonic_keep_pot_potential_well_depth"] = []
+        force_data["anharmonic_keep_pot_spring_const"] = []
+        force_data["anharmonic_keep_pot_distance"] = []
+        force_data["anharmonic_keep_pot_atom_pairs"] = []
+        
+        for i in range(int(len(args.anharmonic_keep_pot)/4)):
+            force_data["anharmonic_keep_pot_potential_well_depth"].append(float(args.anharmonic_keep_pot[4*i]))#au
+            force_data["anharmonic_keep_pot_spring_const"].append(float(args.anharmonic_keep_pot[4*i+1]))#au
+            force_data["anharmonic_keep_pot_distance"].append(float(args.anharmonic_keep_pot[4*i+2]))#ang
+            force_data["anharmonic_keep_pot_atom_pairs"].append(num_parse(args.anharmonic_keep_pot[4*i+3]))
+            if len(force_data["anharmonic_keep_pot_atom_pairs"][i]) != 2:
+                print("invaild input (-akp atom_pairs)")
+                sys.exit(0)
+            
+        #---------------------
+        if len(args.keep_pot) % 3 != 0:
+            print("invaild input (-kp)")
+            sys.exit(0)
+        
+        force_data["keep_pot_spring_const"] = []
+        force_data["keep_pot_distance"] = []
+        force_data["keep_pot_atom_pairs"] = []
+        
+        for i in range(int(len(args.keep_pot)/3)):
+            force_data["keep_pot_spring_const"].append(float(args.keep_pot[3*i]))#au
+            force_data["keep_pot_distance"].append(float(args.keep_pot[3*i+1]))#ang
+            force_data["keep_pot_atom_pairs"].append(num_parse(args.keep_pot[3*i+2]))
+            if len(force_data["keep_pot_atom_pairs"][i]) != 2:
+                print("invaild input (-kp atom_pairs)")
+                sys.exit(0)
+            
+        #---------------------
+        if len(args.keep_angle) % 3 != 0:
+            print("invaild input (-ka)")
+            sys.exit(0)
+        
+        force_data["keep_angle_spring_const"] = []
+        force_data["keep_angle_angle"] = []
+        force_data["keep_angle_atom_pairs"] = []
+        
+        for i in range(int(len(args.keep_angle)/3)):
+            force_data["keep_angle_spring_const"].append(float(args.keep_angle[3*i]))#au
+            force_data["keep_angle_angle"].append(float(args.keep_angle[3*i+1]))#degrees
+            force_data["keep_angle_atom_pairs"].append(num_parse(args.keep_angle[3*i+2]))
+            if len(force_data["keep_angle_atom_pairs"][i]) != 3:
+                print("invaild input (-ka atom_pairs)")
+                sys.exit(0)
+        #---------------------
+        if len(args.keep_dihedral_angle) % 3 != 0:
+            print("invaild input (-kda)")
+            sys.exit(0)
+            
+        force_data["keep_dihedral_angle_spring_const"] = []
+        force_data["keep_dihedral_angle_angle"] = []
+        force_data["keep_dihedral_angle_atom_pairs"] = []
+        
+        for i in range(int(len(args.keep_dihedral_angle)/3)):
+            force_data["keep_dihedral_angle_spring_const"].append(float(args.keep_dihedral_angle[3*i]))#au
+            force_data["keep_dihedral_angle_angle"].append(float(args.keep_dihedral_angle[3*i+1]))#degrees
+            force_data["keep_dihedral_angle_atom_pairs"].append(num_parse(args.keep_dihedral_angle[3*i+2]))
+            if len(force_data["keep_dihedral_angle_atom_pairs"][i]) != 4:
+                print("invaild input (-kda atom_pairs)")
+                sys.exit(0)
+        
+        #---------------------
+        if len(args.well_pot) % 4 != 0:
+            print("invaild input (-wp)")
+            sys.exit(0)
+            
+        force_data["well_pot_wall_energy"] = []
+        force_data["well_pot_fragm_1"] = []
+        force_data["well_pot_fragm_2"] = []
+        force_data["well_pot_limit_dist"] = []
+        
+        for i in range(int(len(args.well_pot)/4)):
+            force_data["well_pot_wall_energy"].append(float(args.well_pot[4*i]))#kJ/mol
+            force_data["well_pot_fragm_1"].append(num_parse(args.well_pot[4*i+1]))
+            force_data["well_pot_fragm_2"].append(num_parse(args.well_pot[4*i+2]))
+            force_data["well_pot_limit_dist"].append(args.well_pot[4*i+3].split(","))#ang
+            if float(force_data["well_pot_limit_dist"][i][0]) < float(force_data["well_pot_limit_dist"][i][1]) and float(force_data["well_pot_limit_dist"][i][1]) < float(force_data["well_pot_limit_dist"][i][2]) and float(force_data["well_pot_limit_dist"][i][2]) < float(force_data["well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-wp a<b<c<d)")
+                sys.exit(0)
+                
+        #---------------------
+        if len(args.wall_well_pot) % 4 != 0:
+            print("invaild input (-wwp)")
+            sys.exit(0)
+            
+        force_data["wall_well_pot_wall_energy"] = []
+        force_data["wall_well_pot_direction"] = []
+        force_data["wall_well_pot_limit_dist"] = []
+        force_data["wall_well_pot_target"] = []
+        
+        for i in range(int(len(args.wall_well_pot)/4)):
+            force_data["wall_well_pot_wall_energy"].append(float(args.wall_well_pot[4*i]))#kJ/mol
+            force_data["wall_well_pot_direction"].append(args.wall_well_pot[4*i+1])
+            
+            if force_data["wall_well_pot_direction"][i] == "x" or force_data["wall_well_pot_direction"][i] == "y" or force_data["wall_well_pot_direction"][i] == "z":
+                pass
+            else:
+                print("invaild input (-wwp direction)")
+                sys.exit(0)
+            
+            force_data["wall_well_pot_limit_dist"].append(args.wall_well_pot[4*i+2].split(","))#ang
+            if float(force_data["wall_well_pot_limit_dist"][i][0]) < float(force_data["wall_well_pot_limit_dist"][i][1]) and float(force_data["wall_well_pot_limit_dist"][i][1]) < float(force_data["wall_well_pot_limit_dist"][i][2]) and float(force_data["wall_well_pot_limit_dist"][i][2]) < float(force_data["wall_well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-wwp a<b<c<d)")
+                sys.exit(0)
+            
+            force_data["wall_well_pot_target"].append(num_parse(args.wall_well_pot[4*i+3]))
+        #---------------------
+        
+        if len(args.void_point_well_pot) % 4 != 0:
+            print("invaild input (-vpwp)")
+            sys.exit(0)
+            
+        force_data["void_point_well_pot_wall_energy"] = []
+        force_data["void_point_well_pot_coordinate"] = []
+        force_data["void_point_well_pot_limit_dist"] = []
+        force_data["void_point_well_pot_target"] = []
+        
+        for i in range(int(len(args.void_point_well_pot)/4)):
+            force_data["void_point_well_pot_wall_energy"].append(float(args.void_point_well_pot[4*i]))#kJ/mol
+            
+            
+            force_data["void_point_well_pot_coordinate"].append(list(map(float, args.void_point_well_pot[4*i+1].split(","))))
+            
+            if len(force_data["void_point_well_pot_coordinate"][i]) != 3:
+                print("invaild input (-vpwp coordinate)")
+                sys.exit(0)
+            
+            force_data["void_point_well_pot_limit_dist"].append(args.void_point_well_pot[4*i+2].split(","))#ang
+            if float(force_data["void_point_well_pot_limit_dist"][i][0]) < float(force_data["void_point_well_pot_limit_dist"][i][1]) and float(force_data["void_point_well_pot_limit_dist"][i][1]) < float(force_data["void_point_well_pot_limit_dist"][i][2]) and float(force_data["void_point_well_pot_limit_dist"][i][2]) < float(force_data["void_point_well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-vpwp a<b<c<d)")
+                sys.exit(0)
+                
+            force_data["void_point_well_pot_target"].append(num_parse(args.void_point_well_pot[4*i+3]))
+            
+        #---------------------
+        
+        if len(args.around_well_pot) % 4 != 0:
+            print("invaild input (-awp)")
+            sys.exit(0)
+            
+        force_data["around_well_pot_wall_energy"] = []
+        force_data["around_well_pot_center"] = []
+        force_data["around_well_pot_limit_dist"] = []
+        force_data["around_well_pot_target"] = []
+        
+        for i in range(int(len(args.around_well_pot)/4)):
+            force_data["around_well_pot_wall_energy"].append(float(args.around_well_pot[4*i]))#kJ/mol
+            
+            
+            force_data["around_well_pot_center"].append(num_parse(args.around_well_pot[4*i+1]))
+            
+            
+            force_data["around_well_pot_limit_dist"].append(args.around_well_pot[4*i+2].split(","))#ang
+            if float(force_data["around_well_pot_limit_dist"][i][0]) < float(force_data["around_well_pot_limit_dist"][i][1]) and float(force_data["around_well_pot_limit_dist"][i][1]) < float(force_data["around_well_pot_limit_dist"][i][2]) and float(force_data["around_well_pot_limit_dist"][i][2]) < float(force_data["around_well_pot_limit_dist"][i][3]):
+                pass
+            else:
+                print("invaild input (-vpwp a<b<c<d)")
+                sys.exit(0)
+                
+            force_data["around_well_pot_target"].append(num_parse(args.around_well_pot[4*i+3]))
+            
+        #---------------------
+        
+        if len(args.void_point_pot) % 5 != 0:
+            print("invaild input (-vpp)")
+            sys.exit(0)
+        
+        force_data["void_point_pot_spring_const"] = []
+        force_data["void_point_pot_distance"] = []
+        force_data["void_point_pot_coord"] = []
+        force_data["void_point_pot_atoms"] = []
+        force_data["void_point_pot_order"] = []
+        
+        for i in range(int(len(args.void_point_pot)/5)):
+            force_data["void_point_pot_spring_const"].append(float(args.void_point_pot[5*i]))#au
+            force_data["void_point_pot_distance"].append(float(args.void_point_pot[5*i+1]))#ang
+            coord = args.void_point_pot[5*i+2].split(",")
+            force_data["void_point_pot_coord"].append(list(map(float, coord)))#ang
+            force_data["void_point_pot_atoms"].append(num_parse(args.void_point_pot[5*i+3]))
+            force_data["void_point_pot_order"].append(float(args.void_point_pot[5*i+4]))
+        #---------------------
+
+        
+        
+        if len(args.fix_atoms) > 0:
+            force_data["fix_atoms"] = num_parse(args.fix_atoms[0])
+        else:
+            force_data["fix_atoms"] = ""
+        
+        force_data["geom_info"] = num_parse(args.geom_info[0])
+        
+        force_data["opt_method"] = args.opt_method
+        
+        force_data["xtb"] = args.usextb
+        
+        return force_data
 
 #------------------------------------------
 #constant section
@@ -1860,7 +2247,7 @@ class LJRepulsivePotential:
 
         a_value = 1.0
         """
-	# ref.  ACS Catal. 2022, 12, 7, 3752–3766
+        # ref.  ACS Catal. 2022, 12, 7, 3752–3766
         # required variables: self.config["cone_potential_well_value"], 
                              self.config["cone_potential_dist_value"], 
                              self.config["cone_potential_cone_angle"],
@@ -2907,7 +3294,7 @@ class FileIO:
             print(" ".join(geometry))
             
         geometry_list.append(new_data)
-        print("-----")
+        print("")
         return geometry_list
         
     def make_geometry_list_2_for_pyscf(self, new_geometry, element_list):#numbering name of function is not good. (ex. function_1, function_2, ...) 
@@ -2925,7 +3312,7 @@ class FileIO:
             print(" ".join(geometry))
             
         geometry_list.append(new_data)
-        print("-----")
+        print("")
         return geometry_list
         
     def make_psi4_input_file(self, geometry_list, iter):
@@ -3400,6 +3787,7 @@ class BiasPotentialAddtion:
                 self.SUB_BASIS_SET = { "default" : self.BASIS_SET}
         else:
             self.SUB_BASIS_SET = "" # 
+            self.electric_charge_and_multiplicity = [args.electronic_charge, args.spin_multiplicity]
         
             if len(args.sub_basisset) > 0:
                 self.SUB_BASIS_SET +="\nassign "+str(self.BASIS_SET)+"\n" # 
@@ -3648,391 +4036,6 @@ class BiasPotentialAddtion:
                 
         return e, g, positions, finish_frag
 
-    def force_data_parser(self, args):
-        def num_parse(numbers):
-            sub_list = []
-            
-            sub_tmp_list = numbers.split(",")
-            for sub in sub_tmp_list:                        
-                if "-" in sub:
-                    for j in range(int(sub.split("-")[0]),int(sub.split("-")[1])+1):
-                        sub_list.append(j)
-                else:
-                    sub_list.append(int(sub))    
-            return sub_list
-        force_data = {}
-        #---------------------
-        if len(args.repulsive_potential) % 5 != 0:
-            print("invaild input (-rp)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_well_scale"] = []
-        force_data["repulsive_potential_dist_scale"] = []
-        force_data["repulsive_potential_Fragm_1"] = []
-        force_data["repulsive_potential_Fragm_2"] = []
-        force_data["repulsive_potential_unit"] = []
-        
-        for i in range(int(len(args.repulsive_potential)/5)):
-            force_data["repulsive_potential_well_scale"].append(float(args.repulsive_potential[5*i]))
-            force_data["repulsive_potential_dist_scale"].append(float(args.repulsive_potential[5*i+1]))
-            force_data["repulsive_potential_Fragm_1"].append(num_parse(args.repulsive_potential[5*i+2]))
-            force_data["repulsive_potential_Fragm_2"].append(num_parse(args.repulsive_potential[5*i+3]))
-            force_data["repulsive_potential_unit"].append(str(args.repulsive_potential[5*i+4]))
-        
-
-        #---------------------
-        if len(args.repulsive_potential_v2) % 10 != 0:
-            print("invaild input (-rpv2)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_v2_well_scale"] = []
-        force_data["repulsive_potential_v2_dist_scale"] = []
-        force_data["repulsive_potential_v2_length"] = []
-        force_data["repulsive_potential_v2_const_rep"] = []
-        force_data["repulsive_potential_v2_const_attr"] = []
-        force_data["repulsive_potential_v2_order_rep"] = []
-        force_data["repulsive_potential_v2_order_attr"] = []
-        force_data["repulsive_potential_v2_center"] = []
-        force_data["repulsive_potential_v2_target"] = []
-        force_data["repulsive_potential_v2_unit"] = []
-        
-        for i in range(int(len(args.repulsive_potential_v2)/10)):
-            force_data["repulsive_potential_v2_well_scale"].append(float(args.repulsive_potential_v2[10*i+0]))
-            force_data["repulsive_potential_v2_dist_scale"].append(float(args.repulsive_potential_v2[10*i+1]))
-            force_data["repulsive_potential_v2_length"].append(float(args.repulsive_potential_v2[10*i+2]))
-            force_data["repulsive_potential_v2_const_rep"].append(float(args.repulsive_potential_v2[10*i+3]))
-            force_data["repulsive_potential_v2_const_attr"].append(float(args.repulsive_potential_v2[10*i+4]))
-            force_data["repulsive_potential_v2_order_rep"].append(float(args.repulsive_potential_v2[10*i+5]))
-            force_data["repulsive_potential_v2_order_attr"].append(float(args.repulsive_potential_v2[10*i+6]))
-            force_data["repulsive_potential_v2_center"].append(num_parse(args.repulsive_potential_v2[10*i+7]))
-            force_data["repulsive_potential_v2_target"].append(num_parse(args.repulsive_potential_v2[10*i+8]))
-            force_data["repulsive_potential_v2_unit"].append(str(args.repulsive_potential_v2[10*i+9]))
-            if len(force_data["repulsive_potential_v2_center"][i]) != 2:
-                print("invaild input (-rpv2 center)")
-                sys.exit(0)
-        #---------------------
-        if len(args.repulsive_potential_v3) % 6 != 0:
-            print("invaild input (-rpv3)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_v3_well_value"] = []
-        force_data["repulsive_potential_v3_dist_value_list"] = []
-        force_data["repulsive_potential_v3_length"] = []
-        force_data["repulsive_potential_v3_order"] = []
-        force_data["repulsive_potential_v3_center"] = []
-        force_data["repulsive_potential_v3_target"] = []
-        force_data["repulsive_potential_v3_theta_list"] = []#unit: rad.
-        for i in range(int(len(args.repulsive_potential_v3)/6)):
-            force_data["repulsive_potential_v3_well_value"].append(float(args.repulsive_potential_v3[6*i+0]))
-            force_data["repulsive_potential_v3_dist_value_list"].append(list(map(float, args.repulsive_potential_v3[6*i+1].split(","))))
-            force_data["repulsive_potential_v3_length"].append(float(args.repulsive_potential_v3[6*i+2]))
-            force_data["repulsive_potential_v3_order"].append(float(args.repulsive_potential_v3[6*i+3]))
-            force_data["repulsive_potential_v3_center"].append(num_parse(args.repulsive_potential_v3[6*i+4]))
-            force_data["repulsive_potential_v3_target"].append(num_parse(args.repulsive_potential_v3[6*i+5]))
-            force_data["repulsive_potential_v3_theta_list"].append(0.0)
-            if len(force_data["repulsive_potential_v3_center"][i]) != 2:
-                print("invaild input (-rpv3 center)")
-                sys.exit(0)  
-        #---------------------
-        if len(args.repulsive_potential_v4) % 6 != 0:
-            print("invaild input (-rpv4)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_v4_well_value_list"] = []
-        force_data["repulsive_potential_v4_dist_value_list"] = []
-        force_data["repulsive_potential_v4_length"] = []
-        force_data["repulsive_potential_v4_order"] = []
-        force_data["repulsive_potential_v4_center"] = []
-        force_data["repulsive_potential_v4_target"] = []
-        force_data["repulsive_potential_v4_theta_list"] = []#unit: rad.
-        for i in range(int(len(args.repulsive_potential_v4)/6)):
-            force_data["repulsive_potential_v4_well_value_list"].append(list(map(float, args.repulsive_potential_v4[6*i+0].split(","))))
-            force_data["repulsive_potential_v4_dist_value_list"].append(list(map(float, args.repulsive_potential_v4[6*i+1].split(","))))
-            force_data["repulsive_potential_v4_length"].append(float(args.repulsive_potential_v4[6*i+2]))
-            force_data["repulsive_potential_v4_order"].append(float(args.repulsive_potential_v4[6*i+3]))
-            force_data["repulsive_potential_v4_center"].append(num_parse(args.repulsive_potential_v4[6*i+4]))
-            force_data["repulsive_potential_v4_target"].append(num_parse(args.repulsive_potential_v4[6*i+5]))
-            force_data["repulsive_potential_v4_theta_list"].append(0.0)
-            if len(force_data["repulsive_potential_v4_center"][i]) != 2:
-                print("invaild input (-rpv4 center)")
-                sys.exit(0)  
-        #---------------------
-        if len(args.repulsive_potential_v5) % 6 != 0:
-            print("invaild input (-rpv5)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_v5_well_value_list"] = []
-        force_data["repulsive_potential_v5_dist_value_list"] = []
-        force_data["repulsive_potential_v5_length"] = []
-        force_data["repulsive_potential_v5_order"] = []
-        force_data["repulsive_potential_v5_center"] = []
-        force_data["repulsive_potential_v5_target"] = []
-        force_data["repulsive_potential_v5_theta_list"] = []#unit: rad.
-        for i in range(int(len(args.repulsive_potential_v5)/6)):
-            force_data["repulsive_potential_v5_well_value_list"].append(list(map(float, args.repulsive_potential_v5[6*i+0].split(","))))
-            force_data["repulsive_potential_v5_dist_value_list"].append(list(map(float, args.repulsive_potential_v5[6*i+1].split(","))))
-            force_data["repulsive_potential_v5_length"].append(float(args.repulsive_potential_v5[6*i+2]))
-            force_data["repulsive_potential_v5_order"].append(float(args.repulsive_potential_v5[6*i+3]))
-            force_data["repulsive_potential_v5_center"].append(num_parse(args.repulsive_potential_v5[6*i+4]))
-            force_data["repulsive_potential_v5_target"].append(num_parse(args.repulsive_potential_v5[6*i+5]))
-            force_data["repulsive_potential_v5_theta_list"].append(0.0)
-            if len(force_data["repulsive_potential_v5_center"][i]) != 2:
-                print("invaild input (-rpv5 center)")
-                sys.exit(0)  
-        #---------------------
-        
-        if len(args.cone_potential) % 6 != 0:
-            print("invaild input (-cp)")
-            sys.exit(0)
-        
-        force_data["cone_potential_well_value"] = []
-        force_data["cone_potential_dist_value"] = []
-        force_data["cone_potential_cone_angle"] = []
-        force_data["cone_potential_center"] = []
-        force_data["cone_potential_three_atoms"] = []
-        force_data["cone_potential_target"] = []
- 
-        for i in range(int(len(args.cone_potential)/6)):
-            force_data["cone_potential_well_value"].append(float(args.cone_potential[6*i+0]))
-            force_data["cone_potential_dist_value"].append(float(args.cone_potential[6*i+1]))
-            force_data["cone_potential_cone_angle"].append(float(args.cone_potential[6*i+2]))
-            force_data["cone_potential_center"].append(int(args.cone_potential[6*i+3]))
-            force_data["cone_potential_three_atoms"].append(num_parse(args.cone_potential[6*i+4]))
-            force_data["cone_potential_target"].append(num_parse(args.cone_potential[6*i+5]))
-
-            if len(force_data["cone_potential_three_atoms"][i]) != 3:
-                print("invaild input (-cp three atoms)")
-                sys.exit(0)               
-                             
-        
-        
-        
-        #--------------------
-        if len(args.manual_AFIR) % 3 != 0:
-            print("invaild input (-ma)")
-            sys.exit(0)
-        
-        force_data["AFIR_gamma"] = []
-        force_data["AFIR_Fragm_1"] = []
-        force_data["AFIR_Fragm_2"] = []
-        
-
-        for i in range(int(len(args.manual_AFIR)/3)):
-            force_data["AFIR_gamma"].append(float(args.manual_AFIR[3*i]))#kj/mol
-            force_data["AFIR_Fragm_1"].append(num_parse(args.manual_AFIR[3*i+1]))
-            force_data["AFIR_Fragm_2"].append(num_parse(args.manual_AFIR[3*i+2]))
-        
-        
-        #---------------------
-        if len(args.anharmonic_keep_pot) % 4 != 0:
-            print("invaild input (-akp)")
-            sys.exit(0)
-        
-        force_data["anharmonic_keep_pot_potential_well_depth"] = []
-        force_data["anharmonic_keep_pot_spring_const"] = []
-        force_data["anharmonic_keep_pot_distance"] = []
-        force_data["anharmonic_keep_pot_atom_pairs"] = []
-        
-        for i in range(int(len(args.anharmonic_keep_pot)/4)):
-            force_data["anharmonic_keep_pot_potential_well_depth"].append(float(args.anharmonic_keep_pot[4*i]))#au
-            force_data["anharmonic_keep_pot_spring_const"].append(float(args.anharmonic_keep_pot[4*i+1]))#au
-            force_data["anharmonic_keep_pot_distance"].append(float(args.anharmonic_keep_pot[4*i+2]))#ang
-            force_data["anharmonic_keep_pot_atom_pairs"].append(num_parse(args.anharmonic_keep_pot[4*i+3]))
-            if len(force_data["anharmonic_keep_pot_atom_pairs"][i]) != 2:
-                print("invaild input (-akp atom_pairs)")
-                sys.exit(0)
-            
-        #---------------------
-        if len(args.keep_pot) % 3 != 0:
-            print("invaild input (-kp)")
-            sys.exit(0)
-        
-        force_data["keep_pot_spring_const"] = []
-        force_data["keep_pot_distance"] = []
-        force_data["keep_pot_atom_pairs"] = []
-        
-        for i in range(int(len(args.keep_pot)/3)):
-            force_data["keep_pot_spring_const"].append(float(args.keep_pot[3*i]))#au
-            force_data["keep_pot_distance"].append(float(args.keep_pot[3*i+1]))#ang
-            force_data["keep_pot_atom_pairs"].append(num_parse(args.keep_pot[3*i+2]))
-            if len(force_data["keep_pot_atom_pairs"][i]) != 2:
-                print("invaild input (-kp atom_pairs)")
-                sys.exit(0)
-            
-        #---------------------
-        if len(args.keep_angle) % 3 != 0:
-            print("invaild input (-ka)")
-            sys.exit(0)
-        
-        force_data["keep_angle_spring_const"] = []
-        force_data["keep_angle_angle"] = []
-        force_data["keep_angle_atom_pairs"] = []
-        
-        for i in range(int(len(args.keep_angle)/3)):
-            force_data["keep_angle_spring_const"].append(float(args.keep_angle[3*i]))#au
-            force_data["keep_angle_angle"].append(float(args.keep_angle[3*i+1]))#degrees
-            force_data["keep_angle_atom_pairs"].append(num_parse(args.keep_angle[3*i+2]))
-            if len(force_data["keep_angle_atom_pairs"][i]) != 3:
-                print("invaild input (-ka atom_pairs)")
-                sys.exit(0)
-        #---------------------
-        if len(args.keep_dihedral_angle) % 3 != 0:
-            print("invaild input (-kda)")
-            sys.exit(0)
-            
-        force_data["keep_dihedral_angle_spring_const"] = []
-        force_data["keep_dihedral_angle_angle"] = []
-        force_data["keep_dihedral_angle_atom_pairs"] = []
-        
-        for i in range(int(len(args.keep_dihedral_angle)/3)):
-            force_data["keep_dihedral_angle_spring_const"].append(float(args.keep_dihedral_angle[3*i]))#au
-            force_data["keep_dihedral_angle_angle"].append(float(args.keep_dihedral_angle[3*i+1]))#degrees
-            force_data["keep_dihedral_angle_atom_pairs"].append(num_parse(args.keep_dihedral_angle[3*i+2]))
-            if len(force_data["keep_dihedral_angle_atom_pairs"][i]) != 4:
-                print("invaild input (-kda atom_pairs)")
-                sys.exit(0)
-        
-        #---------------------
-        if len(args.well_pot) % 4 != 0:
-            print("invaild input (-wp)")
-            sys.exit(0)
-            
-        force_data["well_pot_wall_energy"] = []
-        force_data["well_pot_fragm_1"] = []
-        force_data["well_pot_fragm_2"] = []
-        force_data["well_pot_limit_dist"] = []
-        
-        for i in range(int(len(args.well_pot)/4)):
-            force_data["well_pot_wall_energy"].append(float(args.well_pot[4*i]))#kJ/mol
-            force_data["well_pot_fragm_1"].append(num_parse(args.well_pot[4*i+1]))
-            force_data["well_pot_fragm_2"].append(num_parse(args.well_pot[4*i+2]))
-            force_data["well_pot_limit_dist"].append(args.well_pot[4*i+3].split(","))#ang
-            if float(force_data["well_pot_limit_dist"][i][0]) < float(force_data["well_pot_limit_dist"][i][1]) and float(force_data["well_pot_limit_dist"][i][1]) < float(force_data["well_pot_limit_dist"][i][2]) and float(force_data["well_pot_limit_dist"][i][2]) < float(force_data["well_pot_limit_dist"][i][3]):
-                pass
-            else:
-                print("invaild input (-wp a<b<c<d)")
-                sys.exit(0)
-                
-        #---------------------
-        if len(args.wall_well_pot) % 4 != 0:
-            print("invaild input (-wwp)")
-            sys.exit(0)
-            
-        force_data["wall_well_pot_wall_energy"] = []
-        force_data["wall_well_pot_direction"] = []
-        force_data["wall_well_pot_limit_dist"] = []
-        force_data["wall_well_pot_target"] = []
-        
-        for i in range(int(len(args.wall_well_pot)/4)):
-            force_data["wall_well_pot_wall_energy"].append(float(args.wall_well_pot[4*i]))#kJ/mol
-            force_data["wall_well_pot_direction"].append(args.wall_well_pot[4*i+1])
-            
-            if force_data["wall_well_pot_direction"][i] == "x" or force_data["wall_well_pot_direction"][i] == "y" or force_data["wall_well_pot_direction"][i] == "z":
-                pass
-            else:
-                print("invaild input (-wwp direction)")
-                sys.exit(0)
-            
-            force_data["wall_well_pot_limit_dist"].append(args.wall_well_pot[4*i+2].split(","))#ang
-            if float(force_data["wall_well_pot_limit_dist"][i][0]) < float(force_data["wall_well_pot_limit_dist"][i][1]) and float(force_data["wall_well_pot_limit_dist"][i][1]) < float(force_data["wall_well_pot_limit_dist"][i][2]) and float(force_data["wall_well_pot_limit_dist"][i][2]) < float(force_data["wall_well_pot_limit_dist"][i][3]):
-                pass
-            else:
-                print("invaild input (-wwp a<b<c<d)")
-                sys.exit(0)
-            
-            force_data["wall_well_pot_target"].append(num_parse(args.wall_well_pot[4*i+3]))
-        #---------------------
-        
-        if len(args.void_point_well_pot) % 4 != 0:
-            print("invaild input (-vpwp)")
-            sys.exit(0)
-            
-        force_data["void_point_well_pot_wall_energy"] = []
-        force_data["void_point_well_pot_coordinate"] = []
-        force_data["void_point_well_pot_limit_dist"] = []
-        force_data["void_point_well_pot_target"] = []
-        
-        for i in range(int(len(args.void_point_well_pot)/4)):
-            force_data["void_point_well_pot_wall_energy"].append(float(args.void_point_well_pot[4*i]))#kJ/mol
-            
-            
-            force_data["void_point_well_pot_coordinate"].append(list(map(float, args.void_point_well_pot[4*i+1].split(","))))
-            
-            if len(force_data["void_point_well_pot_coordinate"][i]) != 3:
-                print("invaild input (-vpwp coordinate)")
-                sys.exit(0)
-            
-            force_data["void_point_well_pot_limit_dist"].append(args.void_point_well_pot[4*i+2].split(","))#ang
-            if float(force_data["void_point_well_pot_limit_dist"][i][0]) < float(force_data["void_point_well_pot_limit_dist"][i][1]) and float(force_data["void_point_well_pot_limit_dist"][i][1]) < float(force_data["void_point_well_pot_limit_dist"][i][2]) and float(force_data["void_point_well_pot_limit_dist"][i][2]) < float(force_data["void_point_well_pot_limit_dist"][i][3]):
-                pass
-            else:
-                print("invaild input (-vpwp a<b<c<d)")
-                sys.exit(0)
-                
-            force_data["void_point_well_pot_target"].append(num_parse(args.void_point_well_pot[4*i+3]))
-            
-        #---------------------
-        
-        if len(args.around_well_pot) % 4 != 0:
-            print("invaild input (-awp)")
-            sys.exit(0)
-            
-        force_data["around_well_pot_wall_energy"] = []
-        force_data["around_well_pot_center"] = []
-        force_data["around_well_pot_limit_dist"] = []
-        force_data["around_well_pot_target"] = []
-        
-        for i in range(int(len(args.around_well_pot)/4)):
-            force_data["around_well_pot_wall_energy"].append(float(args.around_well_pot[4*i]))#kJ/mol
-            
-            
-            force_data["around_well_pot_center"].append(num_parse(args.around_well_pot[4*i+1]))
-            
-            
-            force_data["around_well_pot_limit_dist"].append(args.around_well_pot[4*i+2].split(","))#ang
-            if float(force_data["around_well_pot_limit_dist"][i][0]) < float(force_data["around_well_pot_limit_dist"][i][1]) and float(force_data["around_well_pot_limit_dist"][i][1]) < float(force_data["around_well_pot_limit_dist"][i][2]) and float(force_data["around_well_pot_limit_dist"][i][2]) < float(force_data["around_well_pot_limit_dist"][i][3]):
-                pass
-            else:
-                print("invaild input (-vpwp a<b<c<d)")
-                sys.exit(0)
-                
-            force_data["around_well_pot_target"].append(num_parse(args.around_well_pot[4*i+3]))
-            
-        #---------------------
-        
-        if len(args.void_point_pot) % 5 != 0:
-            print("invaild input (-vpp)")
-            sys.exit(0)
-        
-        force_data["void_point_pot_spring_const"] = []
-        force_data["void_point_pot_distance"] = []
-        force_data["void_point_pot_coord"] = []
-        force_data["void_point_pot_atoms"] = []
-        force_data["void_point_pot_order"] = []
-        
-        for i in range(int(len(args.void_point_pot)/5)):
-            force_data["void_point_pot_spring_const"].append(float(args.void_point_pot[5*i]))#au
-            force_data["void_point_pot_distance"].append(float(args.void_point_pot[5*i+1]))#ang
-            coord = args.void_point_pot[5*i+2].split(",")
-            force_data["void_point_pot_coord"].append(list(map(float, coord)))#ang
-            force_data["void_point_pot_atoms"].append(num_parse(args.void_point_pot[5*i+3]))
-            force_data["void_point_pot_order"].append(float(args.void_point_pot[5*i+4]))
-        #---------------------
-
-        
-        
-        if len(args.fix_atoms) > 0:
-            force_data["fix_atoms"] = num_parse(args.fix_atoms[0])
-        else:
-            force_data["fix_atoms"] = ""
-        
-        force_data["geom_info"] = num_parse(args.geom_info[0])
-        
-        force_data["opt_method"] = args.opt_method
-        
-        force_data["xtb"] = args.usextb
-        
-        return force_data
 
     def main_for_DSAFIR(self):#This implementation doesnt work well
         """
@@ -4041,7 +4044,7 @@ class BiasPotentialAddtion:
 
         FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
         finish_frag = False
-        force_data = self.force_data_parser(args)
+        force_data = Interface().force_data_parser(args)
         rea_geometry_list, element_list, rea_electric_charge_and_multiplicity = FIO.make_geometry_list_for_DSAFIR(mode="r")
         reactant_file_directory = FIO.make_psi4_input_file_for_DSAFIR(rea_geometry_list, "input", mode="r")
         pro_geometry_list, element_list, pro_electric_charge_and_multiplicity = FIO.make_geometry_list_for_DSAFIR(mode="p")
@@ -4449,7 +4452,7 @@ class BiasPotentialAddtion:
 
         FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
         trust_radii = 0.01
-        force_data = self.force_data_parser(args)
+        force_data = Interface().force_data_parser(args)
         finish_frag = False
         geometry_list, element_list, electric_charge_and_multiplicity = FIO.make_geometry_list()
         file_directory = FIO.make_psi4_input_file(geometry_list, 0)
@@ -4640,7 +4643,7 @@ class BiasPotentialAddtion:
     def main_for_BPA_using_pyscf(self):
         FIO = FileIO(self.BPA_FOLDER_DIRECTORY, self.START_FILE)
         trust_radii = 0.01
-        force_data = self.force_data_parser(args)
+        force_data = Interface().force_data_parser(args)
         finish_frag = False
         geometry_list, element_list = FIO.make_geometry_list_for_pyscf()
         file_directory = FIO.make_pyscf_input_file(geometry_list, 0)
@@ -4818,8 +4821,7 @@ class BiasPotentialAddtion:
         print("Complete...")
         return
     
-    
-    
+
     def main(self):
         if args.DS_AFIR:
             self.main_for_DSAFIR()
@@ -4827,7 +4829,8 @@ class BiasPotentialAddtion:
             self.main_for_BPA_using_pyscf()
         else:
             self.main_for_BPA()
-    
+
+
 
 class Opt_calc_tmps:
     def __init__(self, adam_m, adam_v, adam_count, eve_d_tilde=0.0):
