@@ -2218,6 +2218,7 @@ class LJRepulsivePotential:
                 
                 tensor_grad = torch.func.jacfwd(LJRP.calc_energy_v6)(geom_and_angle_num_list, 1, False, False)
                 #print(tensor_BPA_grad)
+        self.config["repulsive_potential_v6_theta_list"] = angle_list
         self.ell_coord_list = ell_coord_list
         return energy
 
@@ -2868,7 +2869,7 @@ class BiasPotentialCalculation:
             B_e += LJRP.calc_energy_v6(geom_and_angle_num_list, 1, True)
 
             #----------------------
-            angle_list = self.ndarray2tensor(np.array(force_data["repulsive_potential_v6_theta_list"])).reshape(len(force_data["repulsive_potential_v6_theta_list"]), 1)
+            angle_list = LJRP.config["repulsive_potential_v6_theta_list"].reshape(len(force_data["repulsive_potential_v6_theta_list"]), 1)
             geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)  
 
             tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_v6)(geom_and_angle_num_list, 1)
@@ -2886,6 +2887,9 @@ class BiasPotentialCalculation:
             BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
             #---------------------
             LJRP.save_ellipsoid_xyz_file_for_rpv6(LJRP.ell_coord_list)
+
+            with open("ellip_angle_"+str(self.JOBID)+".log","a") as f:
+                f.write(str(angle_list)+"\n")
             #raise
         
         
