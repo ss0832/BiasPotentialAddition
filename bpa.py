@@ -101,9 +101,9 @@ def parser():
     parser.add_argument("-ma", "--manual_AFIR", nargs="*",  type=str, default=['0.0', '1', '2'], help='manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]')
     parser.add_argument("-rp", "--repulsive_potential", nargs="*",  type=str, default=['0.0','1.0', '1', '2', 'scale'], help='Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] [scale or value(kJ/mol ang.)] ...]')
     parser.add_argument("-rpv2", "--repulsive_potential_v2", nargs="*",  type=str, default=['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2', 'scale'], help='Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] [scale or value(kJ/mol ang.)] ...]')
-    parser.add_argument("-rpv3", "--repulsive_potential_v3", nargs="*",  type=str, default=['0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid) (ex.) [[well_value (kJ/mol)] [dist_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
-    parser.add_argument("-rpv4", "--repulsive_potential_v4", nargs="*",  type=str, default=['0.0,0.0,0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.4) (ellipsoid_2) (ex.) [[well_value_list (x,y,z) (kJ/mol)] [dist_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
-    parser.add_argument("-rpv5", "--repulsive_potential_v5", nargs="*",  type=str, default=['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.5) (ellipsoid_3) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+
+    parser.add_argument("-rpv5", "--repulsive_potential_v5", nargs="*",  type=str, default=['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.5) (ellipsoid_3, ellipsoid-ellipsoid interaction OFF) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+    parser.add_argument("-rpv6", "--repulsive_potential_v6", nargs="*",  type=str, default=['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2'], help='Add LJ repulsive_potential based on UFF (ver.6) (ellipsoid_4, ellipsoid-ellipsoid interaction ON) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
     parser.add_argument("-cp", "--cone_potential", nargs="*",  type=str, default=['0.0','1.0','90','1', '2,3,4', '5-9'], help='Add cone type LJ repulsive_potential based on UFF (ex.) [[well_value (epsilon) (kJ/mol)] [dist (sigma) (ang.)] [cone angle (deg.)] [LJ center atom (1)] [three atoms (2,3,4) ] [target atoms (5-9)] ...]')
     
     
@@ -128,6 +128,7 @@ def parser():
     parser.add_argument('-pyscf','--pyscf', help="use pyscf module.", action='store_true')
     parser.add_argument("-elec", "--electronic_charge", type=int, default=0, help='formal electronic charge (ex.) [charge (0)]')
     parser.add_argument("-spin", "--spin_multiplicity", type=int, default=0, help='spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]')
+    parser.add_argument("-order", "--saddle_order", type=int, default=0, help='optimization for n-th order saddle point (Newton group of opt method (RFO) is only available.) (ex.) [order (0)]')
     args = parser.parse_args()
     return args
 
@@ -146,9 +147,8 @@ class Interface:
         self.manual_AFIR = ['0.0', '1', '2'] #manual-AFIR (ex.) [[Gamma(kJ/mol)] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] ...]
         self.repulsive_potential = ['0.0','1.0', '1', '2', 'scale'] #Add LJ repulsive_potential based on UFF (ex.) [[well_scale] [dist_scale] [Fragm.1(ex. 1,2,3-5)] [Fragm.2] [scale or value (ang. kJ/mol)] ...]
         self.repulsive_potential_v2 = ['0.0','1.0','0.0','1','2','12','6', '1,2', '1-2', 'scale']#Add LJ repulsive_potential based on UFF (ver.2) (eq. V = ε[A * (σ/r)^(rep) - B * (σ/r)^(attr)]) (ex.) [[well_scale] [dist_scale] [length (ang.)] [const. (rep)] [const. (attr)] [order (rep)] [order (attr)] [LJ center atom (1,2)] [target atoms (3-5,8)] [scale or value (ang. kJ/mol)] ...]
-        self.repulsive_potential_v3 = ['0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid) (ex.) [[well_value (kJ/mol)] [dist_scale_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
-        self.repulsive_potential_v4 = ['0.0,0.0,0.0','1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid2) (ex.) [[well_value_list (x,y,z) (kJ/mol)] [dist_list (x,y,z) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
         self.repulsive_potential_v5 = ['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.3) (ellipsoid3) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
+        self.repulsive_potential_v6 = ['0.0,0.0,0.0,0.0,0.0,0.0','1.0,1.0,1.0,1.0,1.0,1.0','0.0','6', '1,2', '1-2']#'Add LJ repulsive_potential based on UFF (ver.6) (ellipsoid_4, ellipsoid-ellipsoid interaction ON) (ex.) [[well_value_list (x1,x2,y1,y2,z1,z2) (kJ/mol)] [dist_list (x1,x2,y1,y2,z1,z2) (ang.)] [length (ang.)] [order] [LJ center atom (1,2)] [target atoms (3-5,8)] ...]')
         self.cone_potential = ['0.0','1.0','90','1', '2,3,4', '5-9']#'Add cone type LJ repulsive_potential based on UFF (ex.) [[well_value (epsilon) (kJ/mol)] [dist (sigma) (ang.)] [cone angle (deg.)] [LJ center atom (1)] [three atoms (2,3,4) ] [target atoms (5-9)] ...]')
         
         self.keep_pot = ['0.0', '1.0', '1,2']#keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
@@ -172,6 +172,7 @@ class Interface:
         self.pyscf = False
         self.electronic_charge = 0
         self.spin_multiplicity = 0#'spin multiplcity (if you use pyscf, please input S value (mol.spin = 2S = Nalpha - Nbeta)) (ex.) [multiplcity (0)]'
+        self.saddle_order = 0
         return
         
     def force_data_parser(self, args):
@@ -236,52 +237,7 @@ class Interface:
             if len(force_data["repulsive_potential_v2_center"][i]) != 2:
                 print("invaild input (-rpv2 center)")
                 sys.exit(0)
-        #---------------------
-        if len(args.repulsive_potential_v3) % 6 != 0:
-            print("invaild input (-rpv3)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_v3_well_value"] = []
-        force_data["repulsive_potential_v3_dist_value_list"] = []
-        force_data["repulsive_potential_v3_length"] = []
-        force_data["repulsive_potential_v3_order"] = []
-        force_data["repulsive_potential_v3_center"] = []
-        force_data["repulsive_potential_v3_target"] = []
-        force_data["repulsive_potential_v3_theta_list"] = []#unit: rad.
-        for i in range(int(len(args.repulsive_potential_v3)/6)):
-            force_data["repulsive_potential_v3_well_value"].append(float(args.repulsive_potential_v3[6*i+0]))
-            force_data["repulsive_potential_v3_dist_value_list"].append(list(map(float, args.repulsive_potential_v3[6*i+1].split(","))))
-            force_data["repulsive_potential_v3_length"].append(float(args.repulsive_potential_v3[6*i+2]))
-            force_data["repulsive_potential_v3_order"].append(float(args.repulsive_potential_v3[6*i+3]))
-            force_data["repulsive_potential_v3_center"].append(num_parse(args.repulsive_potential_v3[6*i+4]))
-            force_data["repulsive_potential_v3_target"].append(num_parse(args.repulsive_potential_v3[6*i+5]))
-            force_data["repulsive_potential_v3_theta_list"].append(0.0)
-            if len(force_data["repulsive_potential_v3_center"][i]) != 2:
-                print("invaild input (-rpv3 center)")
-                sys.exit(0)  
-        #---------------------
-        if len(args.repulsive_potential_v4) % 6 != 0:
-            print("invaild input (-rpv4)")
-            sys.exit(0)
-        
-        force_data["repulsive_potential_v4_well_value_list"] = []
-        force_data["repulsive_potential_v4_dist_value_list"] = []
-        force_data["repulsive_potential_v4_length"] = []
-        force_data["repulsive_potential_v4_order"] = []
-        force_data["repulsive_potential_v4_center"] = []
-        force_data["repulsive_potential_v4_target"] = []
-        force_data["repulsive_potential_v4_theta_list"] = []#unit: rad.
-        for i in range(int(len(args.repulsive_potential_v4)/6)):
-            force_data["repulsive_potential_v4_well_value_list"].append(list(map(float, args.repulsive_potential_v4[6*i+0].split(","))))
-            force_data["repulsive_potential_v4_dist_value_list"].append(list(map(float, args.repulsive_potential_v4[6*i+1].split(","))))
-            force_data["repulsive_potential_v4_length"].append(float(args.repulsive_potential_v4[6*i+2]))
-            force_data["repulsive_potential_v4_order"].append(float(args.repulsive_potential_v4[6*i+3]))
-            force_data["repulsive_potential_v4_center"].append(num_parse(args.repulsive_potential_v4[6*i+4]))
-            force_data["repulsive_potential_v4_target"].append(num_parse(args.repulsive_potential_v4[6*i+5]))
-            force_data["repulsive_potential_v4_theta_list"].append(0.0)
-            if len(force_data["repulsive_potential_v4_center"][i]) != 2:
-                print("invaild input (-rpv4 center)")
-                sys.exit(0)  
+
         #---------------------
         if len(args.repulsive_potential_v5) % 6 != 0:
             print("invaild input (-rpv5)")
@@ -304,6 +260,29 @@ class Interface:
             force_data["repulsive_potential_v5_theta_list"].append(0.0)
             if len(force_data["repulsive_potential_v5_center"][i]) != 2:
                 print("invaild input (-rpv5 center)")
+                sys.exit(0)  
+        #---------------------
+        if len(args.repulsive_potential_v6) % 6 != 0:
+            print("invaild input (-rpv6)")
+            sys.exit(0)
+        
+        force_data["repulsive_potential_v6_well_value_list"] = []
+        force_data["repulsive_potential_v6_dist_value_list"] = []
+        force_data["repulsive_potential_v6_length"] = []
+        force_data["repulsive_potential_v6_order"] = []
+        force_data["repulsive_potential_v6_center"] = []
+        force_data["repulsive_potential_v6_target"] = []
+        force_data["repulsive_potential_v6_theta_list"] = []#unit: rad.
+        for i in range(int(len(args.repulsive_potential_v6)/6)):
+            force_data["repulsive_potential_v6_well_value_list"].append(list(map(float, args.repulsive_potential_v6[6*i+0].split(","))))
+            force_data["repulsive_potential_v6_dist_value_list"].append(list(map(float, args.repulsive_potential_v6[6*i+1].split(","))))
+            force_data["repulsive_potential_v6_length"].append(float(args.repulsive_potential_v6[6*i+2]))
+            force_data["repulsive_potential_v6_order"].append(float(args.repulsive_potential_v6[6*i+3]))
+            force_data["repulsive_potential_v6_center"].append(num_parse(args.repulsive_potential_v6[6*i+4]))
+            force_data["repulsive_potential_v6_target"].append(num_parse(args.repulsive_potential_v6[6*i+5]))
+            force_data["repulsive_potential_v6_theta_list"].append(random.random())
+            if len(force_data["repulsive_potential_v6_center"][i]) != 2:
+                print("invaild input (-rpv6 center)")
                 sys.exit(0)  
         #---------------------
         
@@ -645,9 +624,8 @@ class UnitValueLib:
 #end of constant section
 #----------------------------------------
 
-
 class CalculateMoveVector:
-    def __init__(self, DELTA, Opt_params, Model_hess, BPA_hessian, trust_radii,  FC_COUNT=-1, temperature=0.0):
+    def __init__(self, DELTA, Opt_params, Model_hess, BPA_hessian, trust_radii, saddle_order=0,  FC_COUNT=-1, temperature=0.0):
         self.Opt_params = Opt_params 
         self.DELTA = DELTA
         self.Model_hess = Model_hess
@@ -662,6 +640,7 @@ class CalculateMoveVector:
         self.RMS_FORCE_SWITCHING_THRESHOLD = 0.0008
         self.BPA_hessian = BPA_hessian
         self.trust_radii = trust_radii
+        self.saddle_order = saddle_order
         
     def calc_move_vector(self, iter, geom_num_list, B_g, opt_method_list, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, initial_geom_num_list, g, pre_g):#geom_num_list:Bohr
         def update_trust_radii(trust_radii, B_e, pre_B_e):
@@ -689,16 +668,15 @@ class CalculateMoveVector:
 
             return delta_hess
 
+        
+
         def RFO_BFGS_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_BFGS_quasi_newton_method")
+            print("saddle order:", self.saddle_order)
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             DELTA_for_QNM = self.DELTA
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                return move_vector
-                
+           
 
             delta_hess = BFGS_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
             
@@ -713,21 +691,20 @@ class CalculateMoveVector:
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
-            lambda_for_calc = min(0.0, float(eigenvalue[np.argmin(eigenvalue)]))
+            eigenvalue = np.sort(eigenvalue)
+            lambda_for_calc = float(eigenvalue[self.saddle_order])
             
 
                 
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             DELTA_for_QNM = self.DELTA
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-               
-                return move_vector
-                
+            
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM)
+            
+                
+
             self.Model_hess = Model_hess_tmp(new_hess)
             
             return move_vector
@@ -736,14 +713,7 @@ class CalculateMoveVector:
             print("BFGS_quasi_newton_method")
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-               
-                return move_vector
-
-            
-          
+           
            
             
             delta_hess_BFGS = BFGS_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
@@ -758,11 +728,7 @@ class CalculateMoveVector:
             
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-              
-                return move_vector 
+
             
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess)
@@ -771,13 +737,11 @@ class CalculateMoveVector:
 
         def RFO_FSB_quasi_newton_method(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_FSB_quasi_newton_method")
+            print("saddle order:", self.saddle_order)
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             DELTA_for_QNM = self.DELTA
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                return move_vector
+            
                 
 
             delta_hess = FSB_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
@@ -792,17 +756,15 @@ class CalculateMoveVector:
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
-            lambda_for_calc = min(0.0, float(eigenvalue[np.argmin(eigenvalue)]))
+            eigenvalue = np.sort(eigenvalue)
+            lambda_for_calc = float(eigenvalue[self.saddle_order])
             
 
                 
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             DELTA_for_QNM = self.DELTA
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                return move_vector
+
                 
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM)
@@ -813,10 +775,7 @@ class CalculateMoveVector:
             print("FSB_quasi_newton_method")
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                return move_vector
+            
 
             delta_hess = FSB_hessian_update(self.Model_hess.model_hess, displacement, delta_grad)
             
@@ -830,10 +789,7 @@ class CalculateMoveVector:
             
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                return move_vector 
+
             
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess)
@@ -856,11 +812,7 @@ class CalculateMoveVector:
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                
-                return move_vector
+            
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
@@ -882,11 +834,7 @@ class CalculateMoveVector:
             
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-               
-                return move_vector 
+  
             
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
@@ -907,11 +855,7 @@ class CalculateMoveVector:
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-              
-                return move_vector
+            
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
@@ -932,11 +876,7 @@ class CalculateMoveVector:
             
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-               
-                return move_vector 
+         
             
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
@@ -945,6 +885,7 @@ class CalculateMoveVector:
           
         def RFO_momentum_based_BFGS(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_momentum_based_BFGS")
+            print("saddle order:", self.saddle_order)
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
                 momentum_disp = pre_geom
@@ -957,11 +898,7 @@ class CalculateMoveVector:
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                
-                return move_vector
+          
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
@@ -986,17 +923,13 @@ class CalculateMoveVector:
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
-            lambda_for_calc = min(0.0, float(eigenvalue[np.argmin(eigenvalue)]))
+            eigenvalue = np.sort(eigenvalue)
+            lambda_for_calc = float(eigenvalue[self.saddle_order])
             
 
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
-            
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-                
-                return move_vector 
+        
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
@@ -1004,6 +937,7 @@ class CalculateMoveVector:
         
         def RFO_momentum_based_FSB(geom_num_list, B_g, pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, pre_g, g):
             print("RFO_momentum_based_FSB")
+            print("saddle order:", self.saddle_order)
             adam_count = self.Opt_params.adam_count
             if adam_count == 1:
                 momentum_disp = pre_geom
@@ -1016,11 +950,6 @@ class CalculateMoveVector:
             delta_grad = (g - pre_g).reshape(len(geom_num_list)*3, 1)
             displacement = (geom_num_list - pre_geom).reshape(len(geom_num_list)*3, 1)
             
-            if abs(displacement.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-              
-                return move_vector
 
             new_momentum_disp = beta * momentum_disp + (1.0 - beta) * geom_num_list
             new_momentum_grad = beta * momentum_grad + (1.0 - beta) * g
@@ -1042,17 +971,13 @@ class CalculateMoveVector:
             
             matrix_for_RFO = np.append(matrix_for_RFO, tmp, axis=0)
             eigenvalue, eigenvector = np.linalg.eig(matrix_for_RFO)
-            lambda_for_calc = min(0.0, float(eigenvalue[np.argmin(eigenvalue)]))
+            eigenvalue = np.sort(eigenvalue)
+            lambda_for_calc = float(eigenvalue[self.saddle_order])
             
 
             move_vector = (DELTA_for_QNM*np.dot(np.linalg.inv(new_hess - 0.1*lambda_for_calc*(np.eye(len(geom_num_list)*3))), B_g.reshape(len(geom_num_list)*3, 1))).reshape(len(geom_num_list), 3)
             
             
-            if abs(move_vector.max()) > 10.0/self.bohr2angstroms:
-                move_vector = 0.1*(B_g/np.linalg.norm(B_g))
-                print("displacement is too large!!")
-               
-                return move_vector 
             print("lambda   : ",lambda_for_calc)
             print("step size: ",DELTA_for_QNM,"\n")
             self.Model_hess = Model_hess_tmp(new_hess, new_momentum_disp, new_momentum_grad)
@@ -1716,7 +1641,7 @@ class CalculateMoveVector:
         move_vector += perturbation
         print("perturbation: ", np.linalg.norm(perturbation))
         
-        if iter % self.FC_COUNT == 0 and self.FC_COUNT != -1:
+        if iter % self.FC_COUNT == 0 and self.FC_COUNT != -1 and self.saddle_order < 1:
             self.trust_radii = 0.01
         elif self.FC_COUNT == -1:
             self.trust_radii = 1.0
@@ -1757,6 +1682,16 @@ class LJRepulsivePotential:
             f.write(str(natom)+"\n\n")
             for word in ell_coord_list:
                 f.write(word)
+        return
+    def save_ellipsoid_xyz_file_for_rpv6(self, ell_coord_list):
+        natom = len(ell_coord_list)
+        with open("ellipsoid_"+str(self.config["jobid"])+".xyz","a") as f:
+            f.write(str(natom)+"\n\n")
+            for i in range(len(ell_coord_list)):
+                if i < len(self.config["element_list"]):
+                    f.write(self.config["element_list"][i]+"  {0:.12f}  {1:.12f}  {2:.12f} \n".format(ell_coord_list[i][0].item(), ell_coord_list[i][1].item(), ell_coord_list[i][2].item()))
+                else:
+                    f.write("He  {0:.12f}  {1:.12f}  {2:.12f} \n".format(ell_coord_list[i][0].item(), ell_coord_list[i][1].item(), ell_coord_list[i][2].item()))
         return
     
     def calc_energy_scale(self, geom_num_list):#geom_num_list: torch.float64
@@ -1845,203 +1780,6 @@ class LJRepulsivePotential:
             
         return energy
     
-    def calc_energy_v3(self, geom_num_list):#not implemented
-        """
-        # required variables: self.config["repulsive_potential_v3_well_value"], 
-                             self.config["repulsive_potential_v3_dist_value_list"], 
-                             self.config["repulsive_potential_v3_length"],
-                             self.config["repulsive_potential_v3_order"], 
-                             self.config["repulsive_potential_v3_center"]
-                             self.config["repulsive_potential_v3_target"]
-                             self.config["repulsive_potential_v3_theta_list"]
-                             self.config["element_list"]
-        """
-        micro_iteration_num = 300
-        
-        energy_list = []
-        delta_z_angle_list = []
-        LJ_center_vec = geom_num_list[self.config["repulsive_potential_v3_center"][1]-1] - geom_num_list[self.config["repulsive_potential_v3_center"][0]-1]
-        
-        tr = geom_num_list[self.config["repulsive_potential_v3_center"][0]-1]
-        print("processing microiteration ...")
-        
-        center_x_sigma = self.config["repulsive_potential_v3_dist_value_list"][0]/self.bohr2angstroms
-        center_y_sigma = self.config["repulsive_potential_v3_dist_value_list"][1]/self.bohr2angstroms
-        center_z_sigma = self.config["repulsive_potential_v3_dist_value_list"][2]/self.bohr2angstroms
-        center_epsiron = self.config["repulsive_potential_v3_well_value"]/self.hartree2kjmol
-        
-        for i in range(int(micro_iteration_num)+1):
-            energy = 0.0
-            delta_z_angle = math.pi * i / micro_iteration_num
-            transformed_geom_num_list = Calculationtools().torch_affine_transformation(geom_num_list, tr, LJ_center_vec,  delta_z_angle)
-            tr_LJ_center_vec = transformed_geom_num_list[self.config["repulsive_potential_v3_center"][1]-1] - transformed_geom_num_list[self.config["repulsive_potential_v3_center"][0]-1]
-
-            tr_LJ_center_coord = transformed_geom_num_list[self.config["repulsive_potential_v3_center"][1]-1] + (tr_LJ_center_vec*self.config["repulsive_potential_v3_length"]/self.bohr2angstroms)/torch.linalg.norm(tr_LJ_center_vec)
-            for j in self.config["repulsive_potential_v3_target"]:
-                target_epsiron = UFF_VDW_well_depth_lib(self.config["element_list"][j-1])
-                target_sigma = UFF_VDW_distance_lib(self.config["element_list"][j-1])
-                x_sigma = math.sqrt(center_x_sigma * target_sigma)
-                y_sigma = math.sqrt(center_y_sigma * target_sigma)
-                z_sigma = math.sqrt(center_z_sigma * target_sigma)
-                epsiron = math.sqrt(center_epsiron * target_epsiron)
-                r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                energy += epsiron * ((1/r_ell) ** (self.config["repulsive_potential_v3_order"] * 2) - 2 * (1/r_ell) ** (self.config["repulsive_potential_v3_order"]))
-        
-            energy_list.append(energy.float())
-            delta_z_angle_list.append(delta_z_angle)
-        
-        energy = min(energy_list)
-        min_delta_z_angle = delta_z_angle_list[energy_list.index(min(energy_list))]
-        print(str("min_delta_z_angle [deg.] ("+str(self.config["repulsive_potential_v3_center"][1])+"-"+str(self.config["repulsive_potential_v3_center"][0])+"): "+str(min_delta_z_angle*57.2958)))
-        
-        ell_coord_list = []
-        
-        #-----debug-----
-        print("----- Visualization (.xyz file format) -----")
-        print(str(len(transformed_geom_num_list)+7+6)+"\n")
-        
-        for i in range(len(transformed_geom_num_list)):
-            tmp = (transformed_geom_num_list[i]*self.bohr2angstroms)
-            geom = list(map(str, tmp))
-            
-            print(self.config["element_list"][i]+" "+"  "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item()))
-            ell_coord_list.append(self.config["element_list"][i]+" "+"  "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item())+"\n")
-            
-        tmp = (tr_LJ_center_coord*self.bohr2angstroms)
-        print("X"+" "+" "+" "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item()))
-        ell_coord_list.append("X    "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item())+"\n")
-        ellipsoid_list = torch.tensor([[center_x_sigma*self.bohr2angstroms , 0.0, 0.0],
-                                       [-center_x_sigma*self.bohr2angstroms, 0.0, 0.0],
-                                       [0.0, center_y_sigma*self.bohr2angstroms , 0.0],
-                                       [0.0,-center_y_sigma*self.bohr2angstroms , 0.0],
-                                       [0.0, 0.0,  center_z_sigma*self.bohr2angstroms],
-                                       [0.0, 0.0, -center_z_sigma*self.bohr2angstroms]], dtype=torch.float64)
-                                       
-        tr_ellipsoid_list = Calculationtools().torch_affine_z_rot(ellipsoid_list, torch.pi+min_delta_z_angle)
-        
-        for i in range(len(tr_ellipsoid_list)):
-            print("X"+" "+" "+" "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item()))
-            ell_coord_list.append("X    "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item())+"\n")
-            
-        ellipsoid_list = torch.tensor([[center_x_sigma*self.bohr2angstroms*2**(-1/6) , 0.0, 0.0],
-                                       [-center_x_sigma*self.bohr2angstroms*2**(-1/6), 0.0, 0.0],
-                                       [0.0, center_y_sigma*self.bohr2angstroms*2**(-1/6) , 0.0],
-                                       [0.0,-center_y_sigma*self.bohr2angstroms*2**(-1/6) , 0.0],
-                                       [0.0, 0.0,  center_z_sigma*self.bohr2angstroms*2**(-1/6)],
-                                       [0.0, 0.0, -center_z_sigma*self.bohr2angstroms*2**(-1/6)]], dtype=torch.float64)
-                                       
-        tr_ellipsoid_list = Calculationtools().torch_affine_z_rot(ellipsoid_list, torch.pi+min_delta_z_angle)
-        
-        for i in range(len(tr_ellipsoid_list)):
-            print("He"+" "+" "+" "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item()))
-            ell_coord_list.append("He    "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item())+"\n")
-            
-            
-        print("----- end -----")
-        #---------------
-        self.ell_coord_list = ell_coord_list
-        #self.save_ellipsoid_xyz_file(ell_coord_list)
-        return energy
-       
-    def calc_energy_v4(self, geom_num_list):#not implemented
-        """
-        # required variables: self.config["repulsive_potential_v4_well_value_list"], 
-                             self.config["repulsive_potential_v4_dist_value_list"], 
-                             self.config["repulsive_potential_v4_length"],
-                             self.config["repulsive_potential_v4_order"], 
-                             self.config["repulsive_potential_v4_center"]
-                             self.config["repulsive_potential_v4_target"]
-                             self.config["repulsive_potential_v4_theta_list"]
-                             self.config["element_list"]
-        """
-        micro_iteration_num = 300
-        
-        energy_list = []
-        delta_z_angle_list = []
-        LJ_center_vec = geom_num_list[self.config["repulsive_potential_v4_center"][1]-1] - geom_num_list[self.config["repulsive_potential_v4_center"][0]-1]
-        center_x_sigma = self.config["repulsive_potential_v4_dist_value_list"][0]/self.bohr2angstroms
-        center_y_sigma = self.config["repulsive_potential_v4_dist_value_list"][1]/self.bohr2angstroms
-        center_z_sigma = self.config["repulsive_potential_v4_dist_value_list"][2]/self.bohr2angstroms
-        
-        center_x_epsilon = self.config["repulsive_potential_v4_well_value_list"][0]/self.bohr2angstroms
-        center_y_epsilon = self.config["repulsive_potential_v4_well_value_list"][1]/self.bohr2angstroms
-        center_z_epsilon = self.config["repulsive_potential_v4_well_value_list"][2]/self.bohr2angstroms
-        
-        tr = geom_num_list[self.config["repulsive_potential_v4_center"][0]-1]
-        print("processing microiteration ...")
-        for i in range(int(micro_iteration_num)+1):
-            energy = 0.0
-            delta_z_angle = math.pi * i / micro_iteration_num
-            transformed_geom_num_list = Calculationtools().torch_affine_transformation(geom_num_list, tr, LJ_center_vec,  delta_z_angle)
-            tr_LJ_center_vec = transformed_geom_num_list[self.config["repulsive_potential_v4_center"][1]-1] - transformed_geom_num_list[self.config["repulsive_potential_v4_center"][0]-1]
-
-            
-            tr_LJ_center_coord = transformed_geom_num_list[self.config["repulsive_potential_v4_center"][1]-1] + (tr_LJ_center_vec*self.config["repulsive_potential_v4_length"]/self.bohr2angstroms)/torch.linalg.norm(tr_LJ_center_vec)
-            for j in self.config["repulsive_potential_v4_target"]:
-                r_ell_norm = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])) ** 2)
-                center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_x_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_y_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_z_epsilon) ** 2)
-                target_epsiron = UFF_VDW_well_depth_lib(self.config["element_list"][j-1])
-                target_sigma = UFF_VDW_distance_lib(self.config["element_list"][j-1])
-                x_sigma = math.sqrt(center_x_sigma * target_sigma)
-                y_sigma = math.sqrt(center_y_sigma * target_sigma)
-                z_sigma = math.sqrt(center_z_sigma * target_sigma)
-                epsiron = math.sqrt(center_epsiron * target_epsiron)
-                r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                energy += epsiron * ((1/r_ell) ** (self.config["repulsive_potential_v4_order"] * 2) - 2 * (1/r_ell) ** (self.config["repulsive_potential_v4_order"]))
-        
-            energy_list.append(energy.float())
-            delta_z_angle_list.append(delta_z_angle)
-        
-        energy = min(energy_list)
-        min_delta_z_angle = delta_z_angle_list[energy_list.index(min(energy_list))]
-        print(str("min_delta_z_angle [deg.] ("+str(self.config["repulsive_potential_v4_center"][1])+"-"+str(self.config["repulsive_potential_v4_center"][0])+"): "+str(min_delta_z_angle*57.2958)))
-        
-         
-        ell_coord_list = []
-        #-----debug-----
-        print("----- Visualization (.xyz file format) -----")
-        print(str(len(transformed_geom_num_list)+7+6)+"\n")
-        
-        for i in range(len(transformed_geom_num_list)):
-            tmp = (transformed_geom_num_list[i]*self.bohr2angstroms)
-            geom = list(map(str, tmp))
-            
-            print(self.config["element_list"][i]+" "+"  "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item()))
-            ell_coord_list.append(self.config["element_list"][i]+" "+"  "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item())+"\n")
-            
-        tmp = (tr_LJ_center_coord*self.bohr2angstroms)
-        print("X"+" "+" "+" "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item()))
-        ell_coord_list.append("X    "+str(tmp[0].item())+" "+str(tmp[1].item())+" "+str(tmp[2].item())+"\n")
-        ellipsoid_list = torch.tensor([[center_x_sigma*self.bohr2angstroms , 0.0, 0.0],
-                                       [-center_x_sigma*self.bohr2angstroms, 0.0, 0.0],
-                                       [0.0, center_y_sigma*self.bohr2angstroms , 0.0],
-                                       [0.0,-center_y_sigma*self.bohr2angstroms , 0.0],
-                                       [0.0, 0.0,  center_z_sigma*self.bohr2angstroms],
-                                       [0.0, 0.0, -center_z_sigma*self.bohr2angstroms]], dtype=torch.float64)
-                                       
-        tr_ellipsoid_list = Calculationtools().torch_affine_z_rot(ellipsoid_list, torch.pi+min_delta_z_angle)
-        
-        for i in range(len(tr_ellipsoid_list)):
-            print("X"+" "+" "+" "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item()))
-            ell_coord_list.append("X    "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item())+"\n")
-        ellipsoid_list = torch.tensor([[center_x_sigma*self.bohr2angstroms*2**(-1/6) , 0.0, 0.0],
-                                       [-center_x_sigma*self.bohr2angstroms*2**(-1/6), 0.0, 0.0],
-                                       [0.0, center_y_sigma*self.bohr2angstroms*2**(-1/6) , 0.0],
-                                       [0.0,-center_y_sigma*self.bohr2angstroms*2**(-1/6) , 0.0],
-                                       [0.0, 0.0,  center_z_sigma*self.bohr2angstroms*2**(-1/6)],
-                                       [0.0, 0.0, -center_z_sigma*self.bohr2angstroms*2**(-1/6)]], dtype=torch.float64)
-                                       
-        tr_ellipsoid_list = Calculationtools().torch_affine_z_rot(ellipsoid_list, torch.pi+min_delta_z_angle)
-        
-        for i in range(len(tr_ellipsoid_list)):
-            print("He"+" "+" "+" "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item()))
-            ell_coord_list.append("He    "+str(tr_ellipsoid_list[i][0].item())+" "+str(tr_ellipsoid_list[i][1].item())+" "+str(tr_ellipsoid_list[i][2].item()+tmp[2].item())+"\n")
-        print("----- end -----")
-        #---------------
-        self.ell_coord_list = ell_coord_list
-        #self.save_ellipsoid_xyz_file(ell_coord_list)
-        return energy
-        
     def calc_energy_v5(self, geom_num_list):
         """
         # required variables: self.config["repulsive_potential_v5_well_value_list"], 
@@ -2085,107 +1823,37 @@ class LJRepulsivePotential:
             
             for j in self.config["repulsive_potential_v5_target"]:
                 r_ell_norm = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])) ** 2)
-                
+                        
                 target_epsiron = UFF_VDW_well_depth_lib(self.config["element_list"][j-1])
                 target_sigma = UFF_VDW_distance_lib(self.config["element_list"][j-1])
-                
-                if tr_LJ_center_coord[2] > 0:
-                    if tr_LJ_center_coord[1] > 0:
-                        if tr_LJ_center_coord[0] > 0:
-                            # x:p y:p z:p
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xp_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_yp_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zp_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xp_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_yp_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zp_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                        
-                        elif tr_LJ_center_coord[0] <= 0:
-                            # x:m y:p z:p
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xm_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_yp_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zp_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xm_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_yp_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zp_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                        else:
-                            raise "rpv5 error"
-                            
-                    elif tr_LJ_center_coord[1] <= 0:
-                        if tr_LJ_center_coord[0] > 0:
-                            # x:p y:m z:p
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xp_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_ym_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zp_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xp_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_ym_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zp_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                            
-                        elif tr_LJ_center_coord[0] <= 0:
-                            # x:m y:m z:p
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xm_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_ym_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zp_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xm_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_ym_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zp_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                        else:
-                            raise "rpv5 error"
-                            
-                    else:
-                        raise "rpv5 error"
-                
-                elif tr_LJ_center_coord[2] <= 0:
-                    if tr_LJ_center_coord[1] > 0:
-                        if tr_LJ_center_coord[0] > 0:
-                            # x:p y:p z:m
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xp_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_yp_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zm_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xp_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_yp_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zm_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                            
-                        elif tr_LJ_center_coord[0] <= 0:
-                            # x:m y:p z:m
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xm_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_yp_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zm_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xm_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_yp_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zm_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                            
-                        else:
-                            raise "rpv5 error"
-                            
-                    elif tr_LJ_center_coord[1] <= 0:
-                        if tr_LJ_center_coord[0] > 0:
-                            # x:p y:m z:m
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xp_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_ym_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zm_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xp_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_ym_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zm_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                        
-                        
-                        elif tr_LJ_center_coord[0] <= 0:
-                            # x:m y:m z:m
-                            center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/center_xm_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/center_ym_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/center_zm_epsilon) ** 2)
-                            x_sigma = math.sqrt(center_xm_sigma * target_sigma)
-                            y_sigma = math.sqrt(center_ym_sigma * target_sigma)
-                            z_sigma = math.sqrt(center_zm_sigma * target_sigma)
-                            r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
-                            epsiron = math.sqrt(center_epsiron * target_epsiron)
-                        else:
-                            raise "rpv5 error"
-                            
-                    else:
-                        raise "rpv5 error"
-                
-                else:
-                    raise "rpv5 error"
                     
+                if transformed_geom_num_list[j-1][2] > tr_LJ_center_coord[2]:
+                    z_sigma = math.sqrt(center_zp_sigma * target_sigma)
+                    z_epsilon = center_zp_epsilon
+                else:
+                    z_sigma = math.sqrt(center_zm_sigma * target_sigma)
+                    z_epsilon = center_zm_epsilon
+                        
+                if transformed_geom_num_list[j-1][1] > tr_LJ_center_coord[1]:
+                    y_sigma = math.sqrt(center_yp_sigma * target_sigma)
+                    y_epsilon = center_yp_epsilon
+                else:
+                    y_sigma = math.sqrt(center_ym_sigma * target_sigma)
+                    y_epsilon = center_ym_epsilon
+                        
+                if transformed_geom_num_list[j-1][0] > tr_LJ_center_coord[0]:
+                    x_sigma = math.sqrt(center_xp_sigma * target_sigma)
+                    x_epsilon = center_xp_epsilon
+                else:
+                    x_sigma = math.sqrt(center_xm_sigma * target_sigma)
+                    x_epsilon = center_xm_epsilon 
+                    
+                r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
+                    
+                center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/x_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/y_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/z_epsilon) ** 2)
+                    
+                epsiron = math.sqrt(center_epsiron * target_epsiron)
+                      
 
                 energy += epsiron * ((1/r_ell) ** (self.config["repulsive_potential_v5_order"] * 2) - 2 * (1/r_ell) ** (self.config["repulsive_potential_v5_order"]))
         
@@ -2241,7 +1909,318 @@ class LJRepulsivePotential:
         self.ell_coord_list = ell_coord_list
         #self.save_ellipsoid_xyz_file(ell_coord_list)
         return energy
+
+
+    def calc_energy_v6(self, geom_and_angle_num_list, iter=300, rand_search=False, microiter=True):
+        
+        """
+        # required variables: self.config["repulsive_potential_v6_well_value_list"], 
+                             self.config["repulsive_potential_v6_dist_value_list"], 
+                             self.config["repulsive_potential_v6_length"],
+                             self.config["repulsive_potential_v6_order"], 
+                             self.config["repulsive_potential_v6_center"]
+                             self.config["repulsive_potential_v6_target"]
+                             self.config["repulsive_potential_v6_theta_list"]
+                             self.config["element_list"]
+        """
+        geom_num = len(geom_and_angle_num_list)-len(self.config["repulsive_potential_v6_theta_list"])
+        geom_num_list = geom_and_angle_num_list[0:geom_num].reshape(int(geom_num/3), 3)
+        angle_list = geom_and_angle_num_list[geom_num:].reshape(len(self.config["repulsive_potential_v6_theta_list"]), 1)
+        calc_tool = Calculationtools()
+        
+        #def FSB_quasi_newton_method_for_ellpot(delta_angle, delta_angle_grad):
+        #    return step_list
+        
+        #random search
+        if rand_search:
+            rand_search_num = int(len(self.config["repulsive_potential_v6_well_value_list"])*2500)
+            min_energy = 10*10
+            print("start random search")
+            for j in range(rand_search_num):
+                LJRP = LJRepulsivePotential(repulsive_potential_v6_well_value_list=self.config["repulsive_potential_v6_well_value_list"], 
+                                            repulsive_potential_v6_dist_value_list=self.config["repulsive_potential_v6_dist_value_list"], 
+                                            repulsive_potential_v6_length=self.config["repulsive_potential_v6_length"],
+                                            repulsive_potential_v6_order=self.config["repulsive_potential_v6_order"],
+                                            repulsive_potential_v6_center=self.config["repulsive_potential_v6_center"],
+                                            repulsive_potential_v6_target=self.config["repulsive_potential_v6_target"],
+                                            repulsive_potential_v6_theta_list=self.config["repulsive_potential_v6_theta_list"],
+                                            element_list=self.config["element_list"])
+                tmp_angle = torch.tensor(np.random.rand(len(self.config["repulsive_potential_v6_theta_list"]), 1) * np.pi * 2.0, dtype=torch.float64, requires_grad=True)
+                LJRP.config["repulsive_potential_v6_theta_list"] = tmp_angle
+                geom_and_angle_num_list[3*len(geom_num_list):] = copy.copy(tmp_angle)
+                tmp_energy = LJRP.calc_energy_v6(geom_and_angle_num_list, 1, False, False)
+                
+                if tmp_energy < min_energy:
+                    min_energy = tmp_energy
+                    angle_list = tmp_angle
+                
+            
+            self.config["repulsive_potential_v6_theta_list"] = angle_list
+            
+            print("result of rand search:") 
+            print("energy:", min_energy.item())
+            print("angle_list:", angle_list)
+        
+        #microiteration
+        for iteration_num in range(iter):
+            energy = 0.0
+            ell_coord_list = geom_num_list*self.bohr2angstroms
+
+            #LJpotential-Target interactions 
+            for k in range(len(self.config["repulsive_potential_v6_center"])):
+
+                LJ_center_vec = geom_num_list[self.config["repulsive_potential_v6_center"][k][1]-1] - geom_num_list[self.config["repulsive_potential_v6_center"][k][0]-1]
+
+                LJ_center_vec_for_display = ell_coord_list[self.config["repulsive_potential_v6_center"][k][1]-1] - ell_coord_list[self.config["repulsive_potential_v6_center"][k][0]-1]
+
+                center_xp_sigma = self.config["repulsive_potential_v6_dist_value_list"][k][0]/self.bohr2angstroms
+                center_xm_sigma = self.config["repulsive_potential_v6_dist_value_list"][k][1]/self.bohr2angstroms
+                center_yp_sigma = self.config["repulsive_potential_v6_dist_value_list"][k][2]/self.bohr2angstroms
+                center_ym_sigma = self.config["repulsive_potential_v6_dist_value_list"][k][3]/self.bohr2angstroms
+                center_zp_sigma = self.config["repulsive_potential_v6_dist_value_list"][k][4]/self.bohr2angstroms
+                center_zm_sigma = self.config["repulsive_potential_v6_dist_value_list"][k][5]/self.bohr2angstroms
+                
+                center_xp_epsilon = self.config["repulsive_potential_v6_well_value_list"][k][0]/self.bohr2angstroms
+                center_xm_epsilon = self.config["repulsive_potential_v6_well_value_list"][k][1]/self.bohr2angstroms
+                center_yp_epsilon = self.config["repulsive_potential_v6_well_value_list"][k][2]/self.bohr2angstroms
+                center_ym_epsilon = self.config["repulsive_potential_v6_well_value_list"][k][3]/self.bohr2angstroms
+                center_zp_epsilon = self.config["repulsive_potential_v6_well_value_list"][k][4]/self.bohr2angstroms
+                center_zm_epsilon = self.config["repulsive_potential_v6_well_value_list"][k][5]/self.bohr2angstroms
+                
+                tr = geom_num_list[self.config["repulsive_potential_v6_center"][k][0]-1]
+
+                tr_for_display = ell_coord_list[self.config["repulsive_potential_v6_center"][k][0]-1]
+                
+                transformed_geom_num_list = calc_tool.torch_affine_transformation(geom_num_list, tr, LJ_center_vec, angle_list[k])
+
+                ell_coord_list = calc_tool.torch_affine_transformation(ell_coord_list, tr_for_display, LJ_center_vec_for_display, angle_list[k])
+
+                tr_LJ_center_vec = transformed_geom_num_list[self.config["repulsive_potential_v6_center"][k][1]-1] - transformed_geom_num_list[self.config["repulsive_potential_v6_center"][k][0]-1]
+
+                tr_LJ_center_vec_for_display = ell_coord_list[self.config["repulsive_potential_v6_center"][k][1]-1] - ell_coord_list[self.config["repulsive_potential_v6_center"][k][0]-1]
+
+
+                tr_LJ_center_coord = transformed_geom_num_list[self.config["repulsive_potential_v6_center"][k][1]-1] + (tr_LJ_center_vec*self.config["repulsive_potential_v6_length"][k]/self.bohr2angstroms)/torch.linalg.norm(tr_LJ_center_vec)
+                
+                tr_LJ_center_coord_for_display = ell_coord_list[self.config["repulsive_potential_v6_center"][k][1]-1] + (tr_LJ_center_vec_for_display*self.config["repulsive_potential_v6_length"][k])/torch.linalg.norm(tr_LJ_center_vec_for_display)
+
+                for j in self.config["repulsive_potential_v6_target"][k]:
+                    r_ell_norm = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])) ** 2)
+                        
+                    target_epsiron = UFF_VDW_well_depth_lib(self.config["element_list"][j-1])
+                    target_sigma = UFF_VDW_distance_lib(self.config["element_list"][j-1])
+                    
+                    if transformed_geom_num_list[j-1][2] > tr_LJ_center_coord[2]:
+                        z_sigma = math.sqrt(center_zp_sigma * target_sigma)
+                        z_epsilon = center_zp_epsilon
+                    else:
+                        z_sigma = math.sqrt(center_zm_sigma * target_sigma)
+                        z_epsilon = center_zm_epsilon
+                        
+                    if transformed_geom_num_list[j-1][1] > tr_LJ_center_coord[1]:
+                        y_sigma = math.sqrt(center_yp_sigma * target_sigma)
+                        y_epsilon = center_yp_epsilon
+                    else:
+                        y_sigma = math.sqrt(center_ym_sigma * target_sigma)
+                        y_epsilon = center_ym_epsilon
+                        
+                    if transformed_geom_num_list[j-1][0] > tr_LJ_center_coord[0]:
+                        x_sigma = math.sqrt(center_xp_sigma * target_sigma)
+                        x_epsilon = center_xp_epsilon
+                    else:
+                        x_sigma = math.sqrt(center_xm_sigma * target_sigma)
+                        x_epsilon = center_xm_epsilon 
+                    
+                    r_ell = torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/x_sigma) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/y_sigma) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/z_sigma) ** 2)
+                    
+                    center_epsiron = 1 / torch.sqrt(((tr_LJ_center_coord[0]-transformed_geom_num_list[j-1][0])/r_ell_norm/x_epsilon) ** 2 + ((tr_LJ_center_coord[1]-transformed_geom_num_list[j-1][1])/r_ell_norm/y_epsilon) ** 2 + ((tr_LJ_center_coord[2]-transformed_geom_num_list[j-1][2])/r_ell_norm/z_epsilon) ** 2)
+                    
+                    epsiron = math.sqrt(center_epsiron * target_epsiron)
+                      
+
+                    energy += epsiron * ((1/r_ell) ** (self.config["repulsive_potential_v6_order"][k] * 2) - 2 * (1/r_ell) ** (self.config["repulsive_potential_v6_order"][k]))
+                    
+                        
+                #-----debug-----
+                
+
+                tmp = tr_LJ_center_coord_for_display
+               
+                ell_coord_list = torch.cat((ell_coord_list, torch.tensor([[tmp[0].item(), tmp[1].item(), tmp[2].item()]], dtype=torch.float64)), dim=0)
+
+                ellipsoid_list = torch.tensor([[center_xp_sigma*self.bohr2angstroms+tmp[0].item(), tmp[1].item(), tmp[2].item()],
+                                               [-1*center_xm_sigma*self.bohr2angstroms+tmp[0].item(), tmp[1].item(), tmp[2].item()],
+                                               [tmp[0].item(), tmp[1].item()+center_yp_sigma*self.bohr2angstroms , tmp[2].item()],
+                                               [tmp[0].item(), tmp[1].item()-1*center_ym_sigma*self.bohr2angstroms, tmp[2].item()],
+                                               [tmp[0].item(), tmp[1].item(),  center_zp_sigma*self.bohr2angstroms+tmp[2].item()],
+                                               [tmp[0].item(), tmp[1].item(),  -1*center_zm_sigma*self.bohr2angstroms+tmp[2].item()]], dtype=torch.float64)
+                                               
+                ell_coord_list = torch.cat((ell_coord_list, ellipsoid_list), dim=0)
     
+                    
+                
+                #---------------
+            
+            
+            self.ell_coord_list = ell_coord_list
+                    
+            center_num_list = [i for i in range(len(self.config["repulsive_potential_v6_center"]))] 
+            
+            #LJpotential-LJpotential interactions
+            for center1, center2 in list(itertools.combinations(center_num_list, 2)):
+                LJ_center_vec_1 = geom_num_list[self.config["repulsive_potential_v6_center"][center1][1]-1] - geom_num_list[self.config["repulsive_potential_v6_center"][center1][0]-1]
+                LJ_center_vec_2 = geom_num_list[self.config["repulsive_potential_v6_center"][center2][1]-1] - geom_num_list[self.config["repulsive_potential_v6_center"][center2][0]-1]
+                center_1_xp_sigma = self.config["repulsive_potential_v6_dist_value_list"][center1][0]/self.bohr2angstroms
+                center_1_xm_sigma = self.config["repulsive_potential_v6_dist_value_list"][center1][1]/self.bohr2angstroms
+                center_1_yp_sigma = self.config["repulsive_potential_v6_dist_value_list"][center1][2]/self.bohr2angstroms
+                center_1_ym_sigma = self.config["repulsive_potential_v6_dist_value_list"][center1][3]/self.bohr2angstroms
+                center_1_zp_sigma = self.config["repulsive_potential_v6_dist_value_list"][center1][4]/self.bohr2angstroms
+                center_1_zm_sigma = self.config["repulsive_potential_v6_dist_value_list"][center1][5]/self.bohr2angstroms
+                
+                center_1_xp_epsilon = self.config["repulsive_potential_v6_well_value_list"][center1][0]/self.bohr2angstroms
+                center_1_xm_epsilon = self.config["repulsive_potential_v6_well_value_list"][center1][1]/self.bohr2angstroms
+                center_1_yp_epsilon = self.config["repulsive_potential_v6_well_value_list"][center1][2]/self.bohr2angstroms
+                center_1_ym_epsilon = self.config["repulsive_potential_v6_well_value_list"][center1][3]/self.bohr2angstroms
+                center_1_zp_epsilon = self.config["repulsive_potential_v6_well_value_list"][center1][4]/self.bohr2angstroms
+                center_1_zm_epsilon = self.config["repulsive_potential_v6_well_value_list"][center1][5]/self.bohr2angstroms
+                
+                center_2_xp_sigma = self.config["repulsive_potential_v6_dist_value_list"][center2][0]/self.bohr2angstroms
+                center_2_xm_sigma = self.config["repulsive_potential_v6_dist_value_list"][center2][1]/self.bohr2angstroms
+                center_2_yp_sigma = self.config["repulsive_potential_v6_dist_value_list"][center2][2]/self.bohr2angstroms
+                center_2_ym_sigma = self.config["repulsive_potential_v6_dist_value_list"][center2][3]/self.bohr2angstroms
+                center_2_zp_sigma = self.config["repulsive_potential_v6_dist_value_list"][center2][4]/self.bohr2angstroms
+                center_2_zm_sigma = self.config["repulsive_potential_v6_dist_value_list"][center2][5]/self.bohr2angstroms
+                
+                center_2_xp_epsilon = self.config["repulsive_potential_v6_well_value_list"][center2][0]/self.bohr2angstroms
+                center_2_xm_epsilon = self.config["repulsive_potential_v6_well_value_list"][center2][1]/self.bohr2angstroms
+                center_2_yp_epsilon = self.config["repulsive_potential_v6_well_value_list"][center2][2]/self.bohr2angstroms
+                center_2_ym_epsilon = self.config["repulsive_potential_v6_well_value_list"][center2][3]/self.bohr2angstroms
+                center_2_zp_epsilon = self.config["repulsive_potential_v6_well_value_list"][center2][4]/self.bohr2angstroms
+                center_2_zm_epsilon = self.config["repulsive_potential_v6_well_value_list"][center2][5]/self.bohr2angstroms
+                
+                tr_1 = geom_num_list[self.config["repulsive_potential_v6_center"][center1][0]-1]
+                tr_2 = geom_num_list[self.config["repulsive_potential_v6_center"][center2][0]-1]
+                
+                
+                    
+    
+                
+                
+                #vec1
+                transformed_geom_num_list_1 = calc_tool.torch_affine_transformation(geom_num_list, tr_1, LJ_center_vec_1, angle_list[center1])
+                tr_1_LJ_center_vec_1 = transformed_geom_num_list_1[self.config["repulsive_potential_v6_center"][center1][1]-1] - transformed_geom_num_list_1[self.config["repulsive_potential_v6_center"][center1][0]-1]
+                tr_1_LJ_center_vec_2 = transformed_geom_num_list_1[self.config["repulsive_potential_v6_center"][center2][1]-1] - transformed_geom_num_list_1[self.config["repulsive_potential_v6_center"][center2][0]-1]
+                    
+                tr_1_LJ_center_coord_1 = transformed_geom_num_list_1[self.config["repulsive_potential_v6_center"][center1][1]-1] + (tr_1_LJ_center_vec_1*self.config["repulsive_potential_v6_length"][center1]/self.bohr2angstroms)/torch.linalg.norm(tr_1_LJ_center_vec_1)
+                tr_1_LJ_center_coord_2 = transformed_geom_num_list_1[self.config["repulsive_potential_v6_center"][center2][1]-1] + (tr_1_LJ_center_vec_2*self.config["repulsive_potential_v6_length"][center2]/self.bohr2angstroms)/torch.linalg.norm(tr_1_LJ_center_vec_2)
+                
+                r_ell_norm_1 = torch.sqrt(((tr_1_LJ_center_coord_1[0]-tr_1_LJ_center_coord_2[0])) ** 2 + ((tr_1_LJ_center_coord_1[1]-tr_1_LJ_center_coord_2[1])) ** 2 + ((tr_1_LJ_center_coord_1[2]-tr_1_LJ_center_coord_2[2])) ** 2)
+                        
+                
+                    
+                if tr_1_LJ_center_coord_2[2] > tr_1_LJ_center_coord_1[2]:
+                    z_sigma_1 = center_1_zp_sigma 
+                    z_epsilon_1 = center_1_zp_epsilon
+                else:
+                    z_sigma_1 = center_1_zm_sigma
+                    z_epsilon_1 = center_1_zm_epsilon
+                        
+                if tr_1_LJ_center_coord_2[1] > tr_1_LJ_center_coord_1[1]:
+                    y_sigma_1 = center_1_yp_sigma 
+                    y_epsilon_1 = center_1_yp_epsilon
+                else:
+                    y_sigma_1 = center_1_ym_sigma 
+                    y_epsilon_1 = center_1_ym_epsilon
+                        
+                if tr_1_LJ_center_coord_2[0] > tr_1_LJ_center_coord_1[0]:
+                    x_sigma_1 = center_1_xp_sigma 
+                    x_epsilon_1 = center_1_xp_epsilon
+                else:
+                    x_sigma_1 = center_1_xm_sigma
+                    x_epsilon_1 = center_1_xm_epsilon 
+                
+
+                r_ell_1 = torch.sqrt(((tr_1_LJ_center_coord_1[0]-tr_1_LJ_center_coord_2[0])/x_sigma_1) ** 2 + ((tr_1_LJ_center_coord_1[1]-tr_1_LJ_center_coord_2[1])/y_sigma_1) ** 2 + ((tr_1_LJ_center_coord_1[2]-tr_1_LJ_center_coord_2[2])/z_sigma_1) ** 2)
+                    
+                center_epsiron_1 = 1 / torch.sqrt(((tr_1_LJ_center_coord_1[0]-tr_1_LJ_center_coord_2[0])/r_ell_norm_1/x_epsilon_1) ** 2 + ((tr_1_LJ_center_coord_1[1]-tr_1_LJ_center_coord_2[1])/r_ell_norm_1/y_epsilon_1) ** 2 + ((tr_1_LJ_center_coord_1[2]-tr_1_LJ_center_coord_2[2])/r_ell_norm_1/z_epsilon_1) ** 2)
+                    
+                #vec2
+                transformed_geom_num_list_2 = calc_tool.torch_affine_transformation(geom_num_list, tr_2, LJ_center_vec_2, angle_list[center2])
+                tr_2_LJ_center_vec_1 = transformed_geom_num_list_2[self.config["repulsive_potential_v6_center"][center2][1]-1] - transformed_geom_num_list_2[self.config["repulsive_potential_v6_center"][center2][0]-1]
+                tr_2_LJ_center_vec_2 = transformed_geom_num_list_2[self.config["repulsive_potential_v6_center"][center1][1]-1] - transformed_geom_num_list_2[self.config["repulsive_potential_v6_center"][center1][0]-1]
+                    
+                tr_2_LJ_center_coord_1 = transformed_geom_num_list_2[self.config["repulsive_potential_v6_center"][center2][1]-1] + (tr_2_LJ_center_vec_1*self.config["repulsive_potential_v6_length"][center2]/self.bohr2angstroms)/torch.linalg.norm(tr_2_LJ_center_vec_1)
+                tr_2_LJ_center_coord_2 = transformed_geom_num_list_2[self.config["repulsive_potential_v6_center"][center1][1]-1] + (tr_2_LJ_center_vec_2*self.config["repulsive_potential_v6_length"][center1]/self.bohr2angstroms)/torch.linalg.norm(tr_2_LJ_center_vec_2)
+                
+                r_ell_norm_2 = torch.sqrt(((tr_2_LJ_center_coord_1[0]-tr_2_LJ_center_coord_2[0])) ** 2 + ((tr_2_LJ_center_coord_1[1]-tr_2_LJ_center_coord_2[1])) ** 2 + ((tr_2_LJ_center_coord_1[2]-tr_2_LJ_center_coord_2[2])) ** 2)
+                        
+                
+                    
+                if tr_2_LJ_center_coord_2[2] > tr_2_LJ_center_coord_1[2]:
+                    z_sigma_2 = center_2_zp_sigma 
+                    z_epsilon_2 = center_2_zp_epsilon
+                else:
+                    z_sigma_2 = center_2_zm_sigma
+                    z_epsilon_2 = center_2_zm_epsilon
+                        
+                if tr_2_LJ_center_coord_2[1] > tr_2_LJ_center_coord_1[1]:
+                    y_sigma_2 = center_2_yp_sigma 
+                    y_epsilon_2 = center_2_yp_epsilon
+                else:
+                    y_sigma_2 = center_2_ym_sigma 
+                    y_epsilon_2 = center_2_ym_epsilon
+                        
+                if tr_2_LJ_center_coord_2[0] > tr_2_LJ_center_coord_1[0]:
+                    x_sigma_2 = center_2_xp_sigma 
+                    x_epsilon_2 = center_2_xp_epsilon
+                else:
+                    x_sigma_2 = center_2_xm_sigma
+                    x_epsilon_2 = center_2_xm_epsilon 
+                    
+
+                r_ell_2 = torch.sqrt(((tr_2_LJ_center_coord_1[0]-tr_2_LJ_center_coord_2[0])/x_sigma_2) ** 2 + ((tr_2_LJ_center_coord_1[1]-tr_2_LJ_center_coord_2[1])/y_sigma_2) ** 2 + ((tr_2_LJ_center_coord_1[2]-tr_2_LJ_center_coord_2[2])/z_sigma_2) ** 2)
+                    
+                center_epsiron_2 = 1 / torch.sqrt(((tr_2_LJ_center_coord_1[0]-tr_2_LJ_center_coord_2[0])/r_ell_norm_2/x_epsilon_2) ** 2 + ((tr_2_LJ_center_coord_1[1]-tr_2_LJ_center_coord_2[1])/r_ell_norm_2/y_epsilon_2) ** 2 + ((tr_2_LJ_center_coord_1[2]-tr_2_LJ_center_coord_2[2])/r_ell_norm_2/z_epsilon_2) ** 2)
+                    
+                    
+                epsiron = math.sqrt(center_epsiron_1 * center_epsiron_2)
+                r_ell = math.sqrt(r_ell_1 * r_ell_2)
+                LJ_order = math.sqrt(self.config["repulsive_potential_v6_order"][center1] * self.config["repulsive_potential_v6_order"][center2])
+                energy += epsiron * ((1/r_ell) ** (LJ_order * 2) - 2 * (1/r_ell) ** (LJ_order))
+
+            if iteration_num % 50 == 0 and microiter: 
+                LJRP = LJRepulsivePotential(repulsive_potential_v6_well_value_list=self.config["repulsive_potential_v6_well_value_list"], 
+                                                repulsive_potential_v6_dist_value_list=self.config["repulsive_potential_v6_dist_value_list"], 
+                                                repulsive_potential_v6_length=self.config["repulsive_potential_v6_length"],
+                                                repulsive_potential_v6_order=self.config["repulsive_potential_v6_order"],
+                                                repulsive_potential_v6_center=self.config["repulsive_potential_v6_center"],
+                                                repulsive_potential_v6_target=self.config["repulsive_potential_v6_target"],
+                                                repulsive_potential_v6_theta_list=self.config["repulsive_potential_v6_theta_list"],
+                                                element_list=self.config["element_list"])
+                geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)  
+                
+                tensor_hessian = torch.func.hessian(LJRP.calc_energy_v6)(geom_and_angle_num_list, 1, False, False)
+                #print(tensor_BPA_hessian)
+
+            if microiter:
+                LJRP = LJRepulsivePotential(repulsive_potential_v6_well_value_list=self.config["repulsive_potential_v6_well_value_list"], 
+                                                repulsive_potential_v6_dist_value_list=self.config["repulsive_potential_v6_dist_value_list"], 
+                                                repulsive_potential_v6_length=self.config["repulsive_potential_v6_length"],
+                                                repulsive_potential_v6_order=self.config["repulsive_potential_v6_order"],
+                                                repulsive_potential_v6_center=self.config["repulsive_potential_v6_center"],
+                                                repulsive_potential_v6_target=self.config["repulsive_potential_v6_target"],
+                                                repulsive_potential_v6_theta_list=self.config["repulsive_potential_v6_theta_list"],
+                                                element_list=self.config["element_list"])
+                geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)  
+                
+                #print(geom_and_angle_num_list, angle_list)
+                geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)  
+                
+                tensor_grad = torch.func.jacfwd(LJRP.calc_energy_v6)(geom_and_angle_num_list, 1, False, False)
+                #print(tensor_BPA_grad)
+        self.ell_coord_list = ell_coord_list
+        return energy
+
     
     def calc_cone_potential_energy(self, geom_num_list):
 
@@ -2575,41 +2554,7 @@ class WellPotential:
                               
         """
         self.config["void_point_well_pot_coordinate"]  = torch.tensor(self.config["void_point_well_pot_coordinate"], dtype=torch.float64)
-        """
-        vec_norm = torch.tensor([[]], dtype=torch.float64, requires_grad=True)
 
-        vecs = geom_num_list - self.config["void_point_well_pot_coordinate"]
-        for j in range(len(vecs)):
-            if j+1 in self.config["void_point_well_pot_target"]:
-               
-                vec_norm = torch.cat([vec_norm, torch.linalg.norm(vecs[j])], dim=1)
-            else:
-                vec_norm = torch.cat([vec_norm, float('nan')], dim=1)
-        print(vec_norm)
-        
-       
-        a = float(self.config["void_point_well_pot_limit_dist"][0]) / self.bohr2angstroms
-        b = float(self.config["void_point_well_pot_limit_dist"][1]) / self.bohr2angstroms
-        c = float(self.config["void_point_well_pot_limit_dist"][2]) / self.bohr2angstroms
-        d = float(self.config["void_point_well_pot_limit_dist"][3]) / self.bohr2angstroms
-        short_dist_linear_func_slope = 0.5 / (b - a)
-        short_dist_linear_func_intercept = 1.0 - 0.5 * b / (b - a) 
-        long_dist_linear_func_slope = 0.5 / (c - d)
-        long_dist_linear_func_intercept = 1.0 - 0.5 * c / (c - d) 
-
-        x_short = short_dist_linear_func_slope * vec_norm + short_dist_linear_func_intercept
-        x_long = long_dist_linear_func_slope * vec_norm + long_dist_linear_func_intercept
-            
-        energy_a = torch.where(vec_norm <= a, (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_short + 2.875), float('nan')).nansum()
-        energy_a_b = torch.where((a < vec_norm) & (vec_norm <= b), (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_short ** 3 + 30.0 * x_short ** 4 - 12.0 * x_short ** 5), float('nan')).nansum()
-        energy_b_c = torch.where((b < vec_norm) & (vec_norm < c), 0.0, float('nan')).nansum()
-        energy_c_d = torch.where((c <= vec_norm) & (vec_norm < d), (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (2.0 - 20.0 * x_long ** 3 + 30.0 * x_long ** 4 - 12.0 * x_long ** 5), float('nan')).nansum()
-        energy_d = torch.where(d <= vec_norm, (self.config["void_point_well_pot_wall_energy"] / self.hartree2kjmol) * (-3.75 * x_long + 2.875), float('nan')).nansum()
-        #print(energy_a, energy_a_b, energy_b_c, energy_c_d, energy_d)
-
-        sum_energy = energy_a + energy_a_b + energy_b_c + energy_c_d + energy_d   
-        #print(sum_energy)
-        """
         
         energy = 0.0
         for i in self.config["void_point_well_pot_target"]:
@@ -2703,8 +2648,7 @@ class WellPotential:
  
         #print(energy)
         return energy
-        
-        
+            
 class DSAFIRPotential:
     def __init__(self, **kwarg):
         self.config = kwarg
@@ -2743,9 +2687,6 @@ class DSAFIRPotential:
         
         return ene
         
-
-
-
 class BiasPotentialCalculation:
     def __init__(self, Model_hess, FC_COUNT):
         torch.set_printoptions(precision=12)
@@ -2884,57 +2825,7 @@ class BiasPotentialCalculation:
             else:
                 pass
         #------------------
-
-        for i in range(len(force_data["repulsive_potential_v3_well_value"])):
-            if force_data["repulsive_potential_v3_well_value"][i] != 0.0:
-              
-                LJRP = LJRepulsivePotential(repulsive_potential_v3_well_value=force_data["repulsive_potential_v3_well_value"][i], 
-                                            repulsive_potential_v3_dist_value_list=force_data["repulsive_potential_v3_dist_value_list"][i], 
-                                            repulsive_potential_v3_length=force_data["repulsive_potential_v3_length"][i],
-                                            repulsive_potential_v3_order=force_data["repulsive_potential_v3_order"][i],
-                                            repulsive_potential_v3_center=force_data["repulsive_potential_v3_center"][i],
-                                            repulsive_potential_v3_target=force_data["repulsive_potential_v3_target"][i],
-                                            repulsive_potential_v3_theta_list=force_data["repulsive_potential_v3_theta_list"][i],
-                                            element_list=element_list,
-                                            jobid=self.JOBID)
-
-                B_e += LJRP.calc_energy_v3(geom_num_list)
-                tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_v3)(geom_num_list)
-                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
-
-                tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_v3)(geom_num_list)
-                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
-                
-                
-                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
-                
-                LJRP.save_ellipsoid_xyz_file(LJRP.ell_coord_list)
-
-        #------------------
-        for i in range(len(force_data["repulsive_potential_v4_well_value_list"])):
-            if not 0.0 in force_data["repulsive_potential_v4_well_value_list"][i]:
-              
-                LJRP = LJRepulsivePotential(repulsive_potential_v4_well_value_list=force_data["repulsive_potential_v4_well_value_list"][i], 
-                                            repulsive_potential_v4_dist_value_list=force_data["repulsive_potential_v4_dist_value_list"][i], 
-                                            repulsive_potential_v4_length=force_data["repulsive_potential_v4_length"][i],
-                                            repulsive_potential_v4_order=force_data["repulsive_potential_v4_order"][i],
-                                            repulsive_potential_v4_center=force_data["repulsive_potential_v4_center"][i],
-                                            repulsive_potential_v4_target=force_data["repulsive_potential_v4_target"][i],
-                                            repulsive_potential_v4_theta_list=force_data["repulsive_potential_v4_theta_list"][i],
-                                            element_list=element_list,
-                                            jobid=self.JOBID)
-
-                B_e += LJRP.calc_energy_v4(geom_num_list)
-                tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_v4)(geom_num_list)
-                BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
-
-                tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_v4)(geom_num_list)
-                tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
-                
-                
-                BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
-                LJRP.save_ellipsoid_xyz_file(LJRP.ell_coord_list)
-        #------------------
+        
         for i in range(len(force_data["repulsive_potential_v5_well_value_list"])):
             if not 0.0 in force_data["repulsive_potential_v5_well_value_list"][i]:
               
@@ -2958,7 +2849,46 @@ class BiasPotentialCalculation:
                 
                 BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
                 LJRP.save_ellipsoid_xyz_file(LJRP.ell_coord_list)
-                
+        #-------------
+        if not 0.0 in force_data["repulsive_potential_v6_well_value_list"]:
+              
+            LJRP = LJRepulsivePotential(repulsive_potential_v6_well_value_list=force_data["repulsive_potential_v6_well_value_list"], 
+                                            repulsive_potential_v6_dist_value_list=force_data["repulsive_potential_v6_dist_value_list"], 
+                                            repulsive_potential_v6_length=force_data["repulsive_potential_v6_length"],
+                                            repulsive_potential_v6_order=force_data["repulsive_potential_v6_order"],
+                                            repulsive_potential_v6_center=force_data["repulsive_potential_v6_center"],
+                                            repulsive_potential_v6_target=force_data["repulsive_potential_v6_target"],
+                                            repulsive_potential_v6_theta_list=force_data["repulsive_potential_v6_theta_list"],
+                                            element_list=element_list,
+                                            jobid=self.JOBID)
+            
+            angle_list = self.ndarray2tensor(np.array(force_data["repulsive_potential_v6_theta_list"])).reshape(len(force_data["repulsive_potential_v6_theta_list"]), 1)
+            geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)    
+     
+            B_e += LJRP.calc_energy_v6(geom_and_angle_num_list, 1, True)
+
+            #----------------------
+            angle_list = self.ndarray2tensor(np.array(force_data["repulsive_potential_v6_theta_list"])).reshape(len(force_data["repulsive_potential_v6_theta_list"]), 1)
+            geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)  
+
+            tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_v6)(geom_and_angle_num_list, 1)
+            #print(tensor_BPA_grad)
+            
+            tensor_BPA_grad = tensor_BPA_grad[0:len(geom_num_list)*3].reshape(len(geom_num_list), 3)
+            
+            BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+            #--------------------
+            tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_v6)(geom_and_angle_num_list, 1)
+            tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_and_angle_num_list), len(geom_and_angle_num_list)))
+            #print(tensor_BPA_hessian)
+            tensor_BPA_hessian = copy.copy(tensor_BPA_hessian[0:len(geom_num_list)*3, 0:len(geom_num_list)*3])
+            
+            BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+            #---------------------
+            LJRP.save_ellipsoid_xyz_file_for_rpv6(LJRP.ell_coord_list)
+            #raise
+        
+        
         #------------------
         for i in range(len(force_data["cone_potential_well_value"])):
             if force_data["cone_potential_well_value"][i] != 0.0:
@@ -3591,7 +3521,7 @@ class Calculationtools:
         print("eigenvalues: ", eigenvalues)
         return hess_proj
     
-    def torch_affine_transformation(self, geom_num_list, tr, LJ_center_vec,  delta_angle):
+    def torch_affine_transformation(self, geom_num_list, tr, LJ_center_vec, delta_angle):
         natoms = len(geom_num_list)
         ones = torch.ones(natoms, 1)
         tmp_geom_num_list = torch.cat((geom_num_list, ones), dim=1).T
@@ -3616,8 +3546,8 @@ class Calculationtools:
 
         
         affine_x_rot_matrix = torch.tensor([[1.0              , 0.0          , 0.0          , 0.0],
-                                            [0.0              , math.cos(x_angle),-math.sin(x_angle), 0.0],
-                                            [0.0              , math.sin(x_angle), math.cos(x_angle), 0.0],
+                                            [0.0              , torch.cos(x_angle),-torch.sin(x_angle), 0.0],
+                                            [0.0              , torch.sin(x_angle), torch.cos(x_angle), 0.0],
                                             [0.0              , 0.0          , 0.0          , 1.0]], dtype=torch.float64, requires_grad=True)
         
         tmp_LJ_center_vec = torch.cat((LJ_center_vec, torch.tensor([1.0])), dim=0)
@@ -3638,9 +3568,9 @@ class Calculationtools:
         else:
             y_angle = torch.pi/2 + torch.arccos(cos_y_angle)
 
-        affine_y_rot_matrix = torch.tensor([[math.cos(y_angle)  , 0.0, math.sin(y_angle), 0.0],
+        affine_y_rot_matrix = torch.tensor([[torch.cos(y_angle)  , 0.0, torch.sin(y_angle), 0.0],
                                             [0.0              , 1.0, 0.0            , 0.0],
-                                            [-math.sin(y_angle) , 0.0, math.cos(y_angle), 0.0],
+                                            [-torch.sin(y_angle) , 0.0, torch.cos(y_angle), 0.0],
                                             [0.0              , 0.0, 0.0            , 1.0]], dtype=torch.float64, requires_grad=True)
         
         
@@ -3657,21 +3587,19 @@ class Calculationtools:
         x_angle_2 = torch.arccos(cos_x_angle_2)
        
         affine_x_rot_matrix_2 = torch.tensor([[1.0             , 0.0                , 0.0                 , 0.0],
-                                             [0.0              , math.cos(x_angle_2), -math.sin(x_angle_2), 0.0],
-                                             [0.0              , math.sin(x_angle_2),  math.cos(x_angle_2), 0.0],
+                                             [0.0              , torch.cos(x_angle_2), -torch.sin(x_angle_2), 0.0],
+                                             [0.0              , torch.sin(x_angle_2),  torch.cos(x_angle_2), 0.0],
                                              [0.0              , 0.0                , 0.0                 , 1.0]], dtype=torch.float64, requires_grad=True)
         
 
-        
-        z_angle = delta_angle
-
-        affine_z_rot_matrix = torch.tensor([[math.cos(z_angle) , -math.sin(z_angle), 0.0, 0.0],
-                                            [math.sin(z_angle) , math.cos(z_angle) , 0.0, 0.0],
+        affine_z_rot_matrix = torch.tensor([[torch.cos(delta_angle) , -torch.sin(delta_angle), 0.0, 0.0],
+                                            [torch.sin(delta_angle) , torch.cos(delta_angle) , 0.0, 0.0],
                                             [0.0             , 0.0             , 1.0, 0.0],
                                             [0.0             , 0.0             , 0.0, 1.0]], dtype=torch.float64, requires_grad=True)
                                             
-                                            
+                                           
         tr_rot_matrix = torch.matmul(affine_z_rot_matrix, torch.matmul(affine_x_rot_matrix_2, torch.matmul(affine_y_rot_matrix, torch.matmul(affine_x_rot_matrix, affine_tr_matrix))))
+        
         tmp_transformed_geom_num_list = torch.matmul(tr_rot_matrix, tmp_geom_num_list).T# [[x,y,z,1] ...]
         transformed_geom_num_list = torch.tensor_split(tmp_transformed_geom_num_list, (0, 3), dim=1)[1]
         # [[x,y,z] ...]
@@ -4151,8 +4079,8 @@ class BiasPotentialAddtion:
             _, pro_B_e, pro_B_g, pro_BPA_hessian = pro_BPC.main(pro_e, pro_g, pro_geom_num_list, element_number_list, force_data, pre_pro_B_g, -1, initial_pro_geom_num_list)#new_geometry:ang.
 
 
-        rea_CMV = CalculateMoveVector(self.DELTA, self.reactant_Opt_params, self.reactant_Model_hess, rea_BPA_hessian, rea_trust_radii, self.FC_COUNT, self.temperature)
-        pro_CMV = CalculateMoveVector(self.DELTA, self.product_Opt_params, self.product_Model_hess, pro_BPA_hessian, pro_trust_radii, self.FC_COUNT, self.temperature)
+        rea_CMV = CalculateMoveVector(self.DELTA, self.reactant_Opt_params, self.reactant_Model_hess, rea_BPA_hessian, rea_trust_radii, args.saddle_order, self.FC_COUNT, self.temperature)
+        pro_CMV = CalculateMoveVector(self.DELTA, self.product_Opt_params, self.product_Model_hess, pro_BPA_hessian, pro_trust_radii, args.saddle_order, self.FC_COUNT, self.temperature)
 
 
         rea_new_geometry, rea_move_vector, self.reactant_Opt_params, self.reactant_Model_hess, rea_trust_radii = rea_CMV.calc_move_vector(0, rea_geom_num_list, rea_B_g, force_data["opt_method"], pre_rea_B_g, pre_rea_geom, rea_B_e, pre_rea_B_e, pre_rea_move_vector, initial_rea_geom_num_list, rea_g, pre_rea_g)
@@ -4278,7 +4206,7 @@ class BiasPotentialAddtion:
                 DSAFIR_e, DSAFIR_g, DS_AFIR_hessian = DS_BPC.calc_DSAFIRPotential(rea_B_e, rea_B_g, rea_geom_num_list, pro_geom_num_list, initial_rea_geom_num_list)#new_geometry:ang.
                 DSAFIR_g += rea_B_g
                 
-                rea_CMV = CalculateMoveVector(self.DELTA, self.reactant_Opt_params, self.reactant_Model_hess, DS_AFIR_hessian+rea_BPA_hessian, rea_trust_radii, self.FC_COUNT, self.temperature)
+                rea_CMV = CalculateMoveVector(self.DELTA, self.reactant_Opt_params, self.reactant_Model_hess, DS_AFIR_hessian+rea_BPA_hessian, rea_trust_radii, args.saddle_order, self.FC_COUNT, self.temperature)
 
                 rea_new_geometry, rea_move_vector, self.reactant_Opt_params, self.reactant_Model_hess, rea_trust_radii = rea_CMV.calc_move_vector(iter, rea_geom_num_list, DSAFIR_g, force_data["opt_method"], pre_rea_DSAFIR_g, pre_rea_geom, DSAFIR_e, pre_DSAFIR_e, pre_rea_move_vector, initial_rea_geom_num_list, rea_g, pre_rea_g)
                 self.reactant_Opt_params = rea_CMV.Opt_params
@@ -4366,7 +4294,7 @@ class BiasPotentialAddtion:
                 DSAFIR_e, DSAFIR_g, DS_AFIR_hessian = DS_BPC.calc_DSAFIRPotential(pro_B_e, pro_B_g, pro_geom_num_list, rea_geom_num_list, initial_pro_geom_num_list)#new_geometry:ang.
                 DSAFIR_g += pro_B_g 
                 
-                pro_CMV = CalculateMoveVector(self.DELTA, self.product_Opt_params, self.product_Model_hess, DS_AFIR_hessian+pro_BPA_hessian, pro_trust_radii, self.FC_COUNT, self.temperature)
+                pro_CMV = CalculateMoveVector(self.DELTA, self.product_Opt_params, self.product_Model_hess, DS_AFIR_hessian+pro_BPA_hessian, pro_trust_radii, args.saddle_order, self.FC_COUNT, self.temperature)
                 pro_new_geometry, pro_move_vector, self.product_Opt_params, self.product_Model_hess, pro_trust_radii = pro_CMV.calc_move_vector(iter, pro_geom_num_list, DSAFIR_g, force_data["opt_method"], pre_pro_DSAFIR_g, pre_pro_geom, DSAFIR_e, pre_DSAFIR_e, pre_pro_move_vector, initial_pro_geom_num_list, pro_g, pre_pro_g)
                 self.product_Opt_params = pro_CMV.Opt_params
                 self.product_Model_hess = pro_CMV.Model_hess
@@ -4548,7 +4476,7 @@ class BiasPotentialAddtion:
 
             #----------------------------
             
-            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, BPA_hessian, trust_radii, self.FC_COUNT, self.temperature)
+            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, BPA_hessian, trust_radii, args.saddle_order, self.FC_COUNT, self.temperature)
             new_geometry, move_vector, Opt_params, Model_hess, trust_radii = CMV.calc_move_vector(iter, geom_num_list, B_g, force_data["opt_method"], pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, initial_geom_num_list, g, pre_g)
             self.Opt_params = Opt_params
             self.Model_hess = Model_hess
@@ -4729,7 +4657,7 @@ class BiasPotentialAddtion:
 
             #----------------------------
             
-            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, BPA_hessian, trust_radii, self.FC_COUNT, self.temperature)
+            CMV = CalculateMoveVector(self.DELTA, self.Opt_params, self.Model_hess, BPA_hessian, trust_radii, args.saddle_order, self.FC_COUNT, self.temperature)
             new_geometry, move_vector, Opt_params, Model_hess, trust_radii = CMV.calc_move_vector(iter, geom_num_list, B_g, force_data["opt_method"], pre_B_g, pre_geom, B_e, pre_B_e, pre_move_vector, initial_geom_num_list, g, pre_g)
             self.Opt_params = Opt_params
             self.Model_hess = Model_hess
