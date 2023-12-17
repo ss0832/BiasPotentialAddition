@@ -1933,7 +1933,7 @@ class LJRepulsivePotential:
         
         #random search
         if rand_search:
-            rand_search_num = int(len(self.config["repulsive_potential_v6_well_value_list"])*2500)
+            rand_search_num = int(len(self.config["repulsive_potential_v6_well_value_list"])*1000)
             min_energy = 10*10
             print("start random search")
             for j in range(rand_search_num):
@@ -1945,6 +1945,7 @@ class LJRepulsivePotential:
                                             repulsive_potential_v6_target=self.config["repulsive_potential_v6_target"],
                                             repulsive_potential_v6_theta_list=self.config["repulsive_potential_v6_theta_list"],
                                             element_list=self.config["element_list"])
+                
                 tmp_angle = torch.tensor(np.random.rand(len(self.config["repulsive_potential_v6_theta_list"]), 1) * np.pi * 2.0, dtype=torch.float64, requires_grad=True)
                 LJRP.config["repulsive_potential_v6_theta_list"] = tmp_angle
                 geom_and_angle_num_list[3*len(geom_num_list):] = copy.copy(tmp_angle)
@@ -2851,7 +2852,8 @@ class BiasPotentialCalculation:
                 BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
                 LJRP.save_ellipsoid_xyz_file(LJRP.ell_coord_list)
         #-------------
-        if not 0.0 in force_data["repulsive_potential_v6_well_value_list"]:
+        
+        if not 0.0 in force_data["repulsive_potential_v6_well_value_list"][0]:
               
             LJRP = LJRepulsivePotential(repulsive_potential_v6_well_value_list=force_data["repulsive_potential_v6_well_value_list"], 
                                             repulsive_potential_v6_dist_value_list=force_data["repulsive_potential_v6_dist_value_list"], 
@@ -2861,7 +2863,8 @@ class BiasPotentialCalculation:
                                             repulsive_potential_v6_target=force_data["repulsive_potential_v6_target"],
                                             repulsive_potential_v6_theta_list=force_data["repulsive_potential_v6_theta_list"],
                                             element_list=element_list,
-                                            jobid=self.JOBID)
+                                            jobid=self.JOBID,
+                                            macroiter=iter)
             
             angle_list = self.ndarray2tensor(np.array(force_data["repulsive_potential_v6_theta_list"])).reshape(len(force_data["repulsive_potential_v6_theta_list"]), 1)
             geom_and_angle_num_list = torch.cat((geom_num_list.reshape(len(geom_num_list)*3, 1), angle_list), dim=0)    
