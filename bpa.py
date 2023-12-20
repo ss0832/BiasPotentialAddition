@@ -1780,7 +1780,7 @@ class LJRepulsivePotential:
             
         return energy
     
-    def calc_energy_v5(self, geom_num_list):
+    def calc_energy_v5(self, geom_num_list, micro_iteration_num=3600):
         """
         # required variables: self.config["repulsive_potential_v5_well_value_list"], 
                              self.config["repulsive_potential_v5_dist_value_list"], 
@@ -1791,7 +1791,7 @@ class LJRepulsivePotential:
                              self.config["repulsive_potential_v5_theta_list"]
                              self.config["element_list"]
         """
-        micro_iteration_num = 600
+        
         
         energy_list = []
         delta_z_angle_list = []
@@ -1812,9 +1812,9 @@ class LJRepulsivePotential:
         
         tr = geom_num_list[self.config["repulsive_potential_v5_center"][0]-1]
         print("processing microiteration ...")
-        for i in range(int(micro_iteration_num)+1):
+        for i in range(int(micro_iteration_num)):
             energy = 0.0
-            delta_z_angle = 2 * math.pi * i / micro_iteration_num
+            delta_z_angle = 2 * math.pi * i / micro_iteration_num + torch.tensor(self.config["repulsive_potential_v5_theta_list"])
             transformed_geom_num_list = Calculationtools().torch_affine_transformation(geom_num_list, tr, LJ_center_vec,  delta_z_angle)
             tr_LJ_center_vec = transformed_geom_num_list[self.config["repulsive_potential_v5_center"][1]-1] - transformed_geom_num_list[self.config["repulsive_potential_v5_center"][0]-1]
 
@@ -1864,6 +1864,7 @@ class LJRepulsivePotential:
         min_delta_z_angle = delta_z_angle_list[energy_list.index(min(energy_list))]
         print(str("min_delta_z_angle [deg.] ("+str(self.config["repulsive_potential_v5_center"][1])+"-"+str(self.config["repulsive_potential_v5_center"][0])+"): "+str(min_delta_z_angle*57.2958)))
         
+        self.config["repulsive_potential_v5_theta_list"] = min_delta_z_angle
          
         ell_coord_list = []
         #-----debug-----
@@ -2842,10 +2843,10 @@ class BiasPotentialCalculation:
                                             jobid=self.JOBID)
 
                 B_e += LJRP.calc_energy_v5(geom_num_list)
-                tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_v5)(geom_num_list)
+                tensor_BPA_grad = torch.func.jacfwd(LJRP.calc_energy_v5)(geom_num_list, 1)
                 BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
 
-                tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_v5)(geom_num_list)
+                tensor_BPA_hessian = torch.func.hessian(LJRP.calc_energy_v5)(geom_num_list, 1)
                 tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
                 
                 
