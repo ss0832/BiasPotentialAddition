@@ -3222,7 +3222,7 @@ class FileIO:
         new_geometry = new_geometry.tolist()
         
         geometry_list = []
-
+        print("\ngeometry:")
         new_data = [electric_charge_and_multiplicity]
         for num, geometry in enumerate(new_geometry):
            
@@ -3238,7 +3238,7 @@ class FileIO:
     def make_geometry_list_2_for_pyscf(self, new_geometry, element_list):#numbering name of function is not good. (ex. function_1, function_2, ...) 
         """load structure updated geometry for next QM calculation"""
         new_geometry = new_geometry.tolist()
-        
+        print("\ngeometry:")
         geometry_list = []
 
         new_data = []
@@ -3631,7 +3631,49 @@ class Calculationtools:
         transformed_geom_num_list = torch.tensor_split(tmp_transformed_geom_num_list, (0, 3), dim=1)[1]
         # [[x,y,z] ...]
         return transformed_geom_num_list
+
+    def check_atom_connectivity(self, mol_list, element_list, atom_num, covalent_radii_threshold_scale=1.2):
+        connected_atoms = [atom_num]
+        searched_atoms = []
+        while True:
+            for i in connected_atoms:
+                if i in searched_atoms:
+                    continue
+                
+                for j in range(len(mol_list)):
+                    dist = np.linalg.norm(np.array(mol_list[i], dtype="float64") - np.array(mol_list[j], dtype="float64"))
+                    
+                    covalent_dist_threshold = covalent_radii_threshold_scale * (covalent_radii_lib(element_list[i]) + covalent_radii_lib(element_list[j]))
+                    
+                    if dist < covalent_dist_threshold:
+                        if not j in connected_atoms:
+                            connected_atoms.append(j)
+                
+                searched_atoms.append(i)
+            
+            if len(connected_atoms) == len(searched_atoms):
+                break
+     
+        return sorted(connected_atoms)
     
+    def calc_fragm_distance(self, geom_num_list, fragm_1_num, fragm_2_num):
+        fragm_1_coord = np.array([0.0, 0.0, 0.0], dtype="float64")
+        fragm_2_coord = np.array([0.0, 0.0, 0.0], dtype="float64")
+        
+        for num in fragm_1_num:
+            fragm_1_coord += geom_num_list[num]
+        
+        fragm_1_coord /= len(fragm_1_num)
+            
+        for num in fragm_2_num:
+            fragm_2_coord += geom_num_list[num]
+        
+        fragm_2_coord /= len(fragm_2_num)
+        
+        dist = np.linalg.norm(fragm_1_coord - fragm_2_coord)
+        
+        return dist
+ 
 class BiasPotentialAddtion:
     def __init__(self, args):
     
@@ -3742,6 +3784,7 @@ class BiasPotentialAddtion:
         
         self.Model_hess = None #
         self.Opt_params = None #
+        self.DC_check_dist = 10.0#ang.
         
         return
         
@@ -4529,13 +4572,38 @@ class BiasPotentialAddtion:
             if abs(B_g.max()) < self.MAX_FORCE_THRESHOLD and abs(np.sqrt(B_g**2).mean()) < self.RMS_FORCE_THRESHOLD and  abs(displacement_vector.max()) < self.MAX_DISPLACEMENT_THRESHOLD and abs(np.sqrt(displacement_vector**2).mean()) < self.RMS_DISPLACEMENT_THRESHOLD:#convergent criteria
                 break
             #-------------------------
-            print("\ngeometry:")
+            
             if len(force_data["fix_atoms"]) > 0:
                 for j in force_data["fix_atoms"]:
                     new_geometry[j-1] = copy.copy(initial_geom_num_list[j-1]*self.bohr2angstroms)
-                    
-            #----------------------------
             
+            #------------------------            
+            #dissociation check
+            atom_label_list = [i for i in range(len(new_geometry))]
+            fragm_atom_num_list = []
+            while len(atom_label_list) > 0:
+                tmp_fragm_list = Calculationtools().check_atom_connectivity(new_geometry, element_list, atom_label_list[0])
+                
+                for j in tmp_fragm_list:
+                    atom_label_list.remove(j)
+                fragm_atom_num_list.append(tmp_fragm_list)
+            
+            print("\nfragm_list:", fragm_atom_num_list)
+            
+            if len(fragm_atom_num_list) > 1:
+                fragm_dist_list = []
+                for fragm_1_num, fragm_2_num in list(itertools.combinations(fragm_atom_num_list, 2)):
+                    dist = Calculationtools().calc_fragm_distance(new_geometry, fragm_1_num, fragm_2_num)
+                    fragm_dist_list.append(dist)
+                
+                mean_dist = np.sum(fragm_dist_list)/len(fragm_dist_list)
+                if mean_dist > self.DC_check_dist:
+                    print("mean fragm distance (ang.)", mean_dist, ">", self.DC_check_dist)
+                    
+                    print("This molecules are dissociated.")
+                    break
+            
+            #----------------------------
             pre_B_e = B_e#Hartree
             pre_e = e
             pre_B_g = B_g#Hartree/Bohr
@@ -4714,7 +4782,32 @@ class BiasPotentialAddtion:
             if len(force_data["fix_atoms"]) > 0:
                 for j in force_data["fix_atoms"]:
                     new_geometry[j-1] = copy.copy(initial_geom_num_list[j-1]*self.bohr2angstroms)
+            #----------------------------
+            #dissociation check
+            atom_label_list = [i for i in range(len(new_geometry))]
+            fragm_atom_num_list = []
+            while len(atom_label_list) > 0:
+                tmp_fragm_list = Calculationtools().check_atom_connectivity(new_geometry, element_list, atom_label_list[0])
+                
+                for j in tmp_fragm_list:
+                    atom_label_list.remove(j)
+                fragm_atom_num_list.append(tmp_fragm_list)
+            
+            print("\nfragm_list:", fragm_atom_num_list)
+            
+            if len(fragm_atom_num_list) > 1:
+                fragm_dist_list = []
+                for fragm_1_num, fragm_2_num in list(itertools.combinations(fragm_atom_num_list, 2)):
+                    dist = Calculationtools().calc_fragm_distance(new_geometry, fragm_1_num, fragm_2_num)
+                    fragm_dist_list.append(dist)
+                
+                mean_dist = np.sum(fragm_dist_list)/len(fragm_dist_list)
+                if mean_dist > self.DC_check_dist:
+                    print("mean fragm distance (ang.)", mean_dist, ">", self.DC_check_dist)
                     
+                    print("This molecules are dissociated.")
+                    break
+             
             #----------------------------
             
             pre_B_e = B_e#Hartree
