@@ -110,6 +110,10 @@ def parser():
     parser.add_argument("-kp", "--keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1,2'], help='keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
     parser.add_argument("-akp", "--anharmonic_keep_pot", nargs="*",  type=str, default=['0.0', '1.0', '1.0', '1,2'], help='Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] ')
     parser.add_argument("-ka", "--keep_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3'], help='keep angle 0.5*k*(θ - θ0)^2 (0 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep angle (degrees)] [atom1,atom2,atom3] ...] ')
+    
+    parser.add_argument("-ddka", "--atom_distance_dependent_keep_angle", nargs="*",  type=str, default=['0.0', '90', "120", "1.4", "5", "1", '2,3,4'], help='atom-distance-dependent keep angle (ex.) [[spring const.(a.u.)] [minimum keep angle (degrees)] [maximum keep angle (degrees)] [base distance (ang.)] [reference atom (1 atom)] [center atom (1 atom)] [atom1,atom2,atom3] ...] ')
+    
+    
     parser.add_argument("-kda", "--keep_dihedral_angle", nargs="*",  type=str, default=['0.0', '90', '1,2,3,4'], help='keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] ')
     parser.add_argument("-vpp", "--void_point_pot", nargs="*",  type=str, default=['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"], help='void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] ')
    
@@ -154,6 +158,8 @@ class Interface:
         self.keep_pot = ['0.0', '1.0', '1,2']#keep potential 0.5*k*(r - r0)^2 (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
         self.anharmonic_keep_pot = ['0.0', '1.0', '1.0', '1,2']#Morse potential  De*[1-exp(-((k/2*De)^0.5)*(r - r0))]^2 (ex.) [[potential well depth (a.u.)] [spring const.(a.u.)] [keep distance (ang.)] [atom1,atom2] ...] 
         self.keep_angle = ['0.0', '90', '1,2,3']#keep angle 0.5*k*(θ - θ0)^2 (0 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep angle (degrees)] [atom1,atom2,atom3] ...] 
+        self.atom_distance_dependent_keep_angle = ['0.0', '90', "120", "1.4", "5", "1", '2,3,4']#'atom-distance-dependent keep angle (ex.) [[spring const.(a.u.)] [minimum keep angle (degrees)] [maximum keep angle (degrees)] [base distance (ang.)] [reference atom (1 atom)] [center atom (1 atom)] [atom1,atom2,atom3] ...] '
+        
         self.keep_dihedral_angle = ['0.0', '90', '1,2,3,4']#keep dihedral angle 0.5*k*(φ - φ0)^2 (-180 ~ 180 deg.) (ex.) [[spring const.(a.u.)] [keep dihedral angle (degrees)] [atom1,atom2,atom3,atom4] ...] 
         self.void_point_pot = ['0.0', '1.0', '0.0,0.0,0.0', '1',"2.0"]#void point keep potential (ex.) [[spring const.(a.u.)] [keep distance (ang.)] [void_point (x,y,z) (ang.)] [atoms(ex. 1,2,3-5)] [order p "(1/p)*k*(r - r0)^p"] ...] 
 
@@ -377,6 +383,35 @@ class Interface:
             force_data["keep_angle_atom_pairs"].append(num_parse(args.keep_angle[3*i+2]))
             if len(force_data["keep_angle_atom_pairs"][i]) != 3:
                 print("invaild input (-ka atom_pairs)")
+                sys.exit(0)
+        
+        #---------------------
+        if len(args.atom_distance_dependent_keep_angle) % 7 != 0:#[[spring const.(a.u.)] [minimum keep angle (degrees)] [maximum keep angle (degrees)] [base distance (ang.)] [reference atom (1 atom)] [center atom (1 atom)] [atom1,atom2,atom3] ...]
+            print("invaild input (-ddka)")
+            sys.exit(0)
+        
+        force_data["aDD_keep_angle_spring_const"] = []
+        force_data["aDD_keep_angle_min_angle"] = []
+        force_data["aDD_keep_angle_max_angle"] = []
+        force_data["aDD_keep_angle_base_dist"] = []
+        force_data["aDD_keep_angle_reference_atom"] = []
+        force_data["aDD_keep_angle_center_atom"] = []
+        force_data["aDD_keep_angle_atoms"] = []
+        
+        for i in range(int(len(args.atom_distance_dependent_keep_angle)/7)):
+            force_data["aDD_keep_angle_spring_const"].append(float(args.atom_distance_dependent_keep_angle[7*i]))#au
+            force_data["aDD_keep_angle_min_angle"].append(float(args.atom_distance_dependent_keep_angle[7*i+1]))#degrees
+            force_data["aDD_keep_angle_max_angle"].append(float(args.atom_distance_dependent_keep_angle[7*i+2]))#degrees
+            if float(args.atom_distance_dependent_keep_angle[7*i+1]) > float(args.atom_distance_dependent_keep_angle[7*i+2]):
+                print("invaild input (-ddka min_angle > max_angle)")
+                sys.exit(0)
+            
+            force_data["aDD_keep_angle_base_dist"].append(float(args.atom_distance_dependent_keep_angle[7*i+3]))#ang.
+            force_data["aDD_keep_angle_reference_atom"].append(int(args.atom_distance_dependent_keep_angle[7*i+4]))#ang.
+            force_data["aDD_keep_angle_center_atom"].append(int(args.atom_distance_dependent_keep_angle[7*i+5]))#ang.
+            force_data["aDD_keep_angle_atoms"].append(num_parse(args.atom_distance_dependent_keep_angle[7*i+6]))
+            if len(force_data["aDD_keep_angle_atoms"][i]) != 3:
+                print("invaild input (-ddka atoms)")
                 sys.exit(0)
         #---------------------
         if len(args.keep_dihedral_angle) % 3 != 0:
@@ -2372,6 +2407,37 @@ class StructKeepAnglePotential:
         theta = torch.arccos(cos_theta)
         energy = 0.5 * self.config["keep_angle_spring_const"] * (theta - torch.deg2rad(torch.tensor(self.config["keep_angle_angle"]))) ** 2
         return energy #hartree
+        
+    def calc_atom_dist_dependent_energy(self, geom_num_list):
+        """
+        # required variables: self.config["aDD_keep_angle_spring_const"] 
+                              self.config["aDD_keep_angle_min_angle"] 
+                              self.config["aDD_keep_angle_max_angle"]
+                              self.config["aDD_keep_angle_base_dist"]
+                              self.config["aDD_keep_angle_reference_atom"] 
+                              self.config["aDD_keep_angle_center_atom"] 
+                              self.config["aDD_keep_angle_atoms"]
+        
+        """
+        energy = 0.0
+        self.config["keep_angle_spring_const"] = self.config["aDD_keep_angle_spring_const"] 
+        max_angle = torch.tensor(self.config["aDD_keep_angle_max_angle"])
+        min_angle = torch.tensor(self.config["aDD_keep_angle_min_angle"])
+        ref_dist = torch.linalg.norm(geom_num_list[self.config["aDD_keep_angle_center_atom"]-1] - geom_num_list[self.config["aDD_keep_angle_reference_atom"]-1]) / self.bohr2angstroms
+        base_dist = self.config["aDD_keep_angle_base_dist"] / self.bohr2angstroms
+        eq_angle = min_angle + ((max_angle - min_angle)/(1 + torch.exp(-(ref_dist - base_dist))))
+        
+        self.config["keep_angle_angle"] = eq_angle
+        
+        
+        self.config["keep_angle_atom_pairs"] = [self.config["aDD_keep_angle_atoms"][0] , self.config["aDD_keep_angle_center_atom"], self.config["aDD_keep_angle_atoms"][1]]
+        energy += self.calc_energy(geom_num_list)
+        self.config["keep_angle_atom_pairs"] = [self.config["aDD_keep_angle_atoms"][2] , self.config["aDD_keep_angle_center_atom"], self.config["aDD_keep_angle_atoms"][1]]
+        energy += self.calc_energy(geom_num_list)
+        self.config["keep_angle_atom_pairs"] = [self.config["aDD_keep_angle_atoms"][0] , self.config["aDD_keep_angle_center_atom"], self.config["aDD_keep_angle_atoms"][2]]
+        energy += self.calc_energy(geom_num_list)
+    
+        return energy
 
 class StructKeepDihedralAnglePotential:
     def __init__(self, **kwarg):
@@ -3065,6 +3131,31 @@ class BiasPotentialCalculation:
                     BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
 
                     tensor_BPA_hessian = torch.func.hessian(SKAngleP.calc_energy)(geom_num_list)
+                    tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
+                    BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
+
+        else:
+            pass
+        
+        #------------------
+        
+        if len(geom_num_list) > 2:
+            for i in range(len(force_data["aDD_keep_angle_spring_const"])):
+                if force_data["aDD_keep_angle_spring_const"][i] != 0.0:
+                    aDDKAngleP = StructKeepAnglePotential(aDD_keep_angle_spring_const=force_data["aDD_keep_angle_spring_const"][i], 
+                                                aDD_keep_angle_min_angle=force_data["aDD_keep_angle_min_angle"][i], 
+                                                aDD_keep_angle_max_angle=force_data["aDD_keep_angle_max_angle"][i],
+                                                aDD_keep_angle_base_dist=force_data["aDD_keep_angle_base_dist"][i],
+                                                aDD_keep_angle_reference_atom=force_data["aDD_keep_angle_reference_atom"][i],
+                                                aDD_keep_angle_center_atom=force_data["aDD_keep_angle_center_atom"][i],
+                                                aDD_keep_angle_atoms=force_data["aDD_keep_angle_atoms"][i])
+
+                    B_e += aDDKAngleP.calc_atom_dist_dependent_energy(geom_num_list)
+                    
+                    tensor_BPA_grad = torch.func.jacfwd(aDDKAngleP.calc_atom_dist_dependent_energy)(geom_num_list)
+                    BPA_grad_list += self.tensor2ndarray(tensor_BPA_grad)
+
+                    tensor_BPA_hessian = torch.func.hessian(aDDKAngleP.calc_atom_dist_dependent_energy)(geom_num_list)
                     tensor_BPA_hessian = torch.reshape(tensor_BPA_hessian, (len(geom_num_list)*3, len(geom_num_list)*3))
                     BPA_hessian += self.tensor2ndarray(tensor_BPA_hessian)
 
